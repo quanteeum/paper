@@ -276,33 +276,79 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
 \end{small}
 \end{algorithm}
 
-\subsection{Certified deletion and verification}\label{sec:verify}
-\begin{enumerate}
-  \item \textbf{Delete \& attest.} Each $E_i$ executes \textsf{Del}(), records post-delete epoch $ctr'$, and generates $\RA_i^{(\mathrm{del})}$ over auxiliary data
-  \[
-    \textsf{aux}_i := (\mathsf{sid}\,\|\,m^{\star}\,\|\,\sigma^{\star}\,\|\,pk\,\|\,ctr').
-  \]
-  \item \textbf{Accept.} Verifier accepts iff (i) $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$, (ii) for a threshold $k$ (typically $k{=}n$), all $\{\RA_i^{(\mathrm{del})}\}$ validate under vendor roots and pass \textsf{Fresh}, and (iii) measurements and policy match the expected enclave code for \prot{}.
+\paragraph{Output artifact (published by $C$).}
+We define the \emph{attested one-shot certificate} for session $\sid$ as
+\[
+\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i,\ \pi^{\mathrm{DEL}}_i,\ \pi^{\mathrm{DKG}}_i)\}_{i\in S}\big),
+\]
+where $S$ is an index set with $|S|\ge k$ satisfying the policy’s diversity constraints,
+$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$,
+and $\pi^{\mathrm{DEL}}_i,\pi^{\mathrm{DKG}}_i$ are append-only \emph{oracle receipts} (e.g., Merkle inclusion proofs or notary signatures)
+attesting that the tuples $(\sid,\mathrm{DEL},\mathsf{eid}_i)$ and $(\sid,\mathrm{DKG},\mathsf{eid}_i)$ are uniquely recorded and that
+$\mathrm{DKG}$ precedes $\mathrm{DEL}$.
+
+\subsection{Certified deletion and publication}
+\begin{enumerate}[leftmargin=*,itemsep=0.25em]
+  \item \textbf{Delete \& attest.} Each enclave $E_i$ executes $\textsf{Del}()$, then generates
+        $\mathsf{RA}^{(\mathrm{DEL})}_i$ with $\mathsf{aux}=(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
+        and sends it to $C$ over the RA–bound channel.
+  \item \textbf{Append to oracle.} For each received quote, $C$ (or $E_i$) invokes
+        $\textsf{Oracle.Append}(\sid,\mathrm{DEL},\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$
+        to obtain a receipt $\pi_i^{\mathrm{DEL}}$;
+        $C$ also fetches (or already holds) the receipt $\pi_i^{\mathrm{DKG}}$ for the corresponding DKG entry.
+  \item \textbf{Publish.} $C$ selects a subset $S$ with $|S|\ge k$ satisfying the policy’s diversity constraints and publishes
+        the certificate $\mathsf{AOSC}_\sid$ containing $\sigma^{\star}$ and the attestation+receipt tuples $\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i,\pi_i^{\mathrm{DEL}},\pi_i^{\mathrm{DKG}})\}_{i\in S}$.
 \end{enumerate}
 
 \begin{algorithm}[!htbp]
-\caption{\prot{}: \emph{DeleteAndVerify}}
-\label{alg:delete-verify}
+\caption{\prot{}: \emph{DeleteAndPublish} (run by $C$ after \emph{SingleSign})}
+\label{alg:delete-publish}
 \begin{small}
 \begin{algorithmic}[1]
 \For{each enclave $E_i$}
-  \State \textsf{Del}(): zeroize $sk_i$ and nonces; bump $ctr' \leftarrow ctr{+}1$.
-  \State $\textsf{aux}_i \gets (\mathsf{sid}\,\|\,m^{\star}\,\|\,\sigma^{\star}\,\|\,pk\,\|\,ctr')$.
-  \State $\RA_i^{(\mathrm{del})} \gets \textsf{RA.GenQuote}(\textsf{aux}_i)$; send to verifier.
+  \State receive $\mathsf{RA}^{(\mathrm{DEL})}_i$ with aux $(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
+  \State $\pi_i^{\mathrm{DEL}} \gets \textsf{Oracle.Append}(\sid,\mathrm{DEL},\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$
+  \State obtain $\pi_i^{\mathrm{DKG}}$ (receipt for $(\sid,\mathrm{DKG},\mathsf{eid}_i)$)
 \EndFor
-\State \textbf{Accept} iff $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$ and at least $k$ quotes validate:
-\State \hspace{1.2em}$\forall i\in Q:\ \textsf{VerifyRA}(\RA_i^{(\mathrm{del})})\wedge \textsf{Fresh}(\RA_i^{(\mathrm{del})},\mathsf{sid})\wedge \mathsf{meas}{=}\mathsf{expected}$.
+\State choose $S$ with $|S|\ge k$ meeting diversity constraints
+\State \textbf{publish} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i,\pi_i^{\mathrm{DEL}},\pi_i^{\mathrm{DKG}})\}_{i\in S})$
+\end{algorithmic}
+\end{small}
+\end{algorithm}
+
+\begin{algorithm}[!htbp]
+\caption{\prot{}: \emph{VerifyAOSC}$(\mathsf{AOSC}_\sid)$}
+\label{alg:verify-aosc}
+\begin{small}
+\begin{algorithmic}[1]
+\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i,\pi_i^{\mathrm{DEL}},\pi_i^{\mathrm{DKG}})\}_{i\in S})$
+\State \textbf{Params:} trusted RA roots, allowed measurement set $\textsf{allow\_meas}$, policy (to rederive $\mathsf{policy\_hash}$ and diversity), freshness-oracle public key / Merkle root
+\State \textbf{(Optional)} If $\mathsf{nonce}$ is included in $\mathsf{AOSC}_\sid$, recompute $\sid \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce})$ and check equality
+\State Assert $\mathsf{policy\_hash}$ matches the verifier’s configured policy; check $|S|\ge k$ and diversity constraints on $\{\mathsf{eid}_i\}_{i\in S}$
+\State Check $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$
+\For{each $i\in S$}
+  \State $\textbf{(a)}$ \textsf{RA.Verify}$(\mathsf{RA}^{(\mathrm{DEL})}_i;\ \textsf{allow\_meas},\ \text{RA roots})=1$
+  \State $\textbf{(b)}$ Parse $\mathsf{aux}$ from $\mathsf{RA}^{(\mathrm{DEL})}_i$ and assert $\mathsf{aux}=(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
+  \State $\textbf{(c)}$ \textsf{Oracle.VerifyReceipt}$(\pi_i^{\mathrm{DKG}},\ (\sid,\mathrm{DKG},\mathsf{eid}_i))=1$
+  \State $\textbf{(d)}$ \textsf{Oracle.VerifyReceipt}$(\pi_i^{\mathrm{DEL}},\ (\sid,\mathrm{DEL},\mathsf{eid}_i),\ \mathsf{RA}^{(\mathrm{DEL})}_i)=1$
+  \State $\textbf{(e)}$ Ensure oracle uniqueness and order for this $(\sid,\mathsf{eid}_i)$: exactly one DKG entry; exactly one DEL entry; and DKG \emph{precedes} DEL
+\EndFor
+\State \textbf{Accept} iff all checks pass
 \end{algorithmic}
 \end{small}
 \end{algorithm}
 
 \subsection{Exact-one property}
-The latch enforces a one-way state transition: any subsequent signing attempt with the same $\sid$ or with a new $\sid$ on the same enclave instance must verify $ctr$ strictly increases; \prot{} refuses pre-nonce sampling if either (a) \emph{post-delete} is set, or (b) the expected epoch monotonicity fails, preventing rollback-based nonce or key re-use.
+The one-shot guarantee is enforced by (i) an in-enclave latch that irrevocably binds $(\sid,m^{\star})$ before any nonce is sampled and refuses further signing under the same $\sid$, and (ii) the freshness oracle’s \emph{uniqueness and ordering} constraints. In particular, each enclave can register at most one $\mathrm{DEL}$ entry for a given $(\sid,\mathsf{eid})$, and every $\mathrm{DEL}$ must have a prior $\mathrm{DKG}$ entry.
+
+\noindent\textbf{Lemma (Exact-one, acceptance level).}
+Let $k$ be the minimum number of deletion attestations required by policy. Under RA unforgeability and an append-only oracle that enforces uniqueness and $\mathrm{DKG}\!\prec\!\mathrm{DEL}$ per $(\sid,\mathsf{eid})$, it is infeasible for any PPT adversary to produce two distinct accepting certificates
+$\mathsf{AOSC}_\sid$ and $\mathsf{AOSC}'_\sid$ for the same $\sid$ (equivalently, the same $pk$), with $\sigma^{\star}\neq\sigma^{\star'}$.
+
+\emph{Proof sketch.} Any accepting certificate must contain at least $k$ valid $\mathrm{DEL}$ quotes whose reportdata all bind the same tuple $(\sid,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$. Because the oracle admits at most one $\mathrm{DEL}$ per $(\sid,\mathsf{eid}_i)$, the same enclave cannot back a second, different $\sigma^{\star'}$ without either (a) forging an RA quote or (b) violating oracle uniqueness/order. Thus a second accepting certificate would require a disjoint set of at least $k$ enclaves emitting fresh $\mathrm{DEL}$ quotes for $\sigma^{\star'}$, which contradicts the honest-minority assumption (for $t\!=\!n$, or more generally once at least one enclave in the accepted set is honest and latched/deleted). \qed
+
+\paragraph{Scope.}
+The exact-one property is per-session: new sessions use new $\sid$ values and fresh DKGs. No monotonic counters or trusted time are assumed.
 
 \section{Security}\label{sec:security}
 We sketch the core arguments; full proofs follow the standard game-hopping template with RA-oracle idealization.
