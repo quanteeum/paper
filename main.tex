@@ -254,10 +254,10 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
 \end{algorithm}
 
 \subsection{Single-signing phase}
-\begin{enumerate}
-  \item \textbf{Commit.} $C$ chooses $m^{\star}$, derives $\mathsf{sid}$, broadcasts $(m^{\star},\mathsf{sid})$.
-  \item \textbf{Latch.} Each $E_i$ verifies policy, binds $(m^{\star},\mathsf{sid})$ to its local one-shot latch, and bumps a monotonic epoch $ctr \leftarrow ctr{+}1$.
-  \item \textbf{Sign.} Enclaves execute threshold signing (e.g., \FROST{}) on $m^{\star}$, producing partial signatures $\sigma_i$; $C$ aggregates to $\sigma^{\star}$.
+\begin{enumerate}[leftmargin=*,itemsep=0.25em]
+  \item \textbf{Commit.} $C$ (over the RA–bound channel) broadcasts $(m^{\star},\mathsf{sid})$ for the \emph{existing} session $\mathsf{sid}$.
+  \item \textbf{Latch.} Each $E_i$ checks that the received $\mathsf{sid}$ matches its local session, that it is not already latched, and then binds $(m^{\star},\mathsf{sid})$ to its local one-shot latch. Further signing under the same $\mathsf{sid}$ is refused.
+  \item \textbf{Sign.} Enclaves execute threshold signing (e.g., \FROST{}) on $m^{\star}$ over RA-bound channels, producing partial signatures $\sigma_i$; $C$ aggregates to $\sigma^{\star}$.
 \end{enumerate}
 
 \begin{algorithm}[!htbp]
@@ -265,14 +265,13 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
 \label{alg:sign}
 \begin{small}
 \begin{algorithmic}[1]
-\State Coordinator $C$ derives $\mathsf{sid} \gets H(\mathsf{suite}\,\|\,\mathsf{policy}\,\|\,\mathsf{meas}\,\|\,m^{\star}\,\|\,\mathsf{nonce})$.
-\State $C$ broadcasts $(m^{\star},\mathsf{sid})$.
+\State $C$ broadcasts $(m^{\star},\mathsf{sid})$ over the RA–TLS channel (using the already-established $\mathsf{sid}$).
 \For{each enclave $E_i$}
-  \State Verify policy; bind $(m^{\star},\mathsf{sid})$ to one\mbox{-}shot latch; bump $ctr \leftarrow ctr{+}1$.
-  \State Run \FROST{} partial signing on $m^{\star}$ to get $\sigma_i$; send to $C$.
+  \State Check $\mathsf{sid}$ equality with local session; abort if mismatched or already latched.
+  \State $\textsf{Latch}(\mathsf{sid},m^{\star})$ to bind the one-shot target.
+  \State Run \FROST{} partial signing on $m^{\star}$ to obtain $\sigma_i$; send $\sigma_i$ to $C$.
 \EndFor
-\State $C$ aggregates $\{\sigma_i\}$ into $\sigma^{\star}$; publish $\sigma^{\star}$.
-\State \textbf{return} $\sigma^{\star}$.
+\State $C$ aggregates $\{\sigma_i\}$ into $\sigma^{\star}$; \textbf{proceed to \emph{DeleteAndPublish}} (Alg.~\ref{alg:delete-publish}).
 \end{algorithmic}
 \end{small}
 \end{algorithm}
