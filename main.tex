@@ -77,64 +77,129 @@ We \emph{do not} assume perfect side-channel resistance or that all rollback vec
 The network is asynchronous with eventual delivery. The adversary may statically corrupt up to $f$ enclaves and their hosts and is rushing. We target $t=n$ for strongest one-shot semantics; extensions to $t<n$ are discussed in \S\ref{sec:discussion}.
 
 \section{\prot{} Protocol}\label{sec:protocol}
-\paragraph{Roles.} Parties $\{P_1,\dots,P_n\}$ run enclaves $\{E_1,\dots,E_n\}$. A (rotating) coordinator $C$ orchestrates rounds but learns no secrets.
-
-\paragraph{Session binding.}
-A session identifier $\mathsf{sid}$ is derived as
-\[
-  \mathsf{sid} \gets H(\mathsf{suite}\,\|\,\mathsf{policy}\,\|\,pk_{\mathrm{code}}\,\|\,m^{\star}\,\|\,\mathsf{nonce}).
-\]
-
-and is embedded in all protocol messages and in the attestation \emph{reportdata}. The designated message $m^{\star}$ is frozen by $C$ before signing.
 
 \begin{figure}[!htbp]
 \centering
-\begin{tikzpicture}[x=2.1cm,y=0.9cm,>=Stealth]
-  % Columns / lifelines (labels at y=0)
-  \node (C)  at (0,0)   {Coordinator $C$};
-  \node (E1) at (2,0)   {$E_1$};
-  \node (Ed) at (3.5,0) {$\cdots$};
-  \node (En) at (5,0)   {$E_n$};
+\begin{tikzpicture}[
+  x=2.0cm,y=0.9cm,>=Stealth,
+  every node/.style={font=\scriptsize},
+  msg/.style={->,line width=0.4pt,shorten >=1pt,shorten <=1pt},
+  lifeline/.style={densely dashed,line width=0.4pt},
+  ann/.style={anchor=west,fill=white,inner sep=1.5pt,rounded corners=1pt,text width=6.2cm}
+]
+  % Column labels (kept separate from lifeline anchors)
+  \node[align=center] (C_lbl)  at (0,0)   {Coordinator\\$C$};
+  \node[align=center] (E1_lbl) at (2,0)   {$E_1$};
+  \node[align=center] (Ed_lbl) at (3.5,0) {$\cdots$};
+  \node[align=center] (En_lbl) at (5,0)   {$E_n$};
 
-  % Lifeline verticals (dashed, starting under each label)
-  \draw[densely dashed] ($(C)+(0,0)$)  -- +(0,-9);
-  \draw[densely dashed] ($(E1)+(0,0)$) -- +(0,-9);
-  \draw[densely dashed] ($(Ed)+(0,0)$) -- +(0,-9);
-  \draw[densely dashed] ($(En)+(0,0)$) -- +(0,-9);
+  % Lifeline anchors start below labels to avoid overlap
+  \coordinate (C)  at (0,-0.8);
+  \coordinate (E1) at (2,-0.8);
+  \coordinate (Ed) at (3.5,-0.8);
+  \coordinate (En) at (5,-0.8);
 
-  % 1) Boot & initial quotes (arrows are horizontal: same y on both ends)
-  \node[anchor=west] at ($(C)+(0,-0.8)$) {\small Setup / Attestation};
-  \draw[->] ($(E1)+(0,-1.2)$) -- node[above,sloped,near start]{\small $\RA^{(0)}_1$} ($(C)+(0,-1.2)$);
-  \draw[->] ($(En)+(0,-1.6)$) -- node[above,sloped,near start]{\small $\RA^{(0)}_n$} ($(C)+(0,-1.6)$);
+  % Lifelines
+  \draw[lifeline] (C)  -- +(0,-9.8);
+  \draw[lifeline] (E1) -- +(0,-9.8);
+  \draw[lifeline] (Ed) -- +(0,-9.8);
+  \draw[lifeline] (En) -- +(0,-9.8);
 
-  % 2) DKG (peer-to-peer, horizontal at fixed y's)
-  \node[anchor=west] at ($(C)+(0,-2.3)$) {\small In-enclave DKG (FROST)};
-  \draw[<->,densely dotted] ($(E1)+(0,-2.6)$) -- node[above]{\small shares/commitments} ($(Ed)+(0,-2.6)$);
-  \draw[<->,densely dotted] ($(Ed)+(0,-2.9)$) -- ($(En)+(0,-2.9)$);
+  % LEFT-MARGIN ANNOTATIONS (white boxes) to avoid any overlap with arrows
+  \node[ann] at (-0.9,-1.0) {JOIN / RA$^{(\mathrm{JOIN})}$ (attested channels; $\mathsf{sid}$ fixed)};
+  \node[ann] at (-0.9,-2.8) {In-enclave DKG (Schnorr / FROST) and RA$_\mathrm{DKG}$};
+  \node[ann] at (-0.9,-5.0) {Commit $m^{\star}$ for $\mathsf{sid}$};
+  \node[ann] at (-0.9,-6.2) {Threshold sign};
+  \node[ann] at (-0.9,-8.2) {Delete \& RA$_\mathrm{DEL}$ (post-output)};
+  \node[ann] at (-0.9,-9.8) {Verifier: check $\sigma^{\star}$ and $k$ fresh RA$_\mathrm{DEL}$ with prior RA$_\mathrm{DKG}$.};
 
-  % 3) Commit (freeze message / sid)
-  \node[anchor=west] at ($(C)+(0,-3.5)$) {\small Commit $(m^{\star},\mathsf{sid})$};
-  \draw[->] ($(C)+(0,-3.8)$) -- node[above,sloped]{\small broadcast $(m^{\star},\mathsf{sid})$} ($(E1)+(0,-3.8)$);
-  \draw[->] ($(C)+(0,-4.1)$) -- node[above,sloped]{\small broadcast $(m^{\star},\mathsf{sid})$} ($(En)+(0,-4.1)$);
+  % 1) JOIN / RA_0
+  \draw[msg] ($(E1)+(0,-1.2)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{JOIN},\mathsf{eid}_1)$} ($(C)+(0,-1.2)$);
+  \draw[msg] ($(En)+(0,-1.5)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{JOIN},\mathsf{eid}_n)$} ($(C)+(0,-1.5)$);
+
+  % 2) DKG (peer-to-peer) + RA_DKG
+  \draw[<->,densely dotted,line width=0.4pt] ($(E1)+(0,-2.8)$) -- node[above]{shares/commitments} ($(Ed)+(0,-2.8)$);
+  \draw[<->,densely dotted,line width=0.4pt] ($(Ed)+(0,-3.1)$) -- ($(En)+(0,-3.1)$);
+  \draw[msg] ($(E1)+(0,-3.4)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DKG},\mathsf{eid}_1,pk)$} ($(C)+(0,-3.4)$);
+  \draw[msg] ($(En)+(0,-3.7)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DKG},\mathsf{eid}_n,pk)$} ($(C)+(0,-3.7)$);
+
+  % 3) Commit (freeze message for this sid)
+  \draw[msg] ($(C)+(0,-4.8)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(E1)+(0,-4.8)$);
+  \draw[msg] ($(E1)+(0,-5.1)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(En)+(0,-5.1)$);
 
   % 4) Sign (partials to aggregate)
-  \node[anchor=west] at ($(C)+(0,-4.9)$) {\small Threshold sign (FROST)};
-  \draw[->] ($(E1)+(0,-5.3)$) -- node[above,sloped,near start]{\small $\sigma_1$} ($(C)+(0,-5.3)$);
-  \draw[->] ($(En)+(0,-5.6)$) -- node[above,sloped,near start]{\small $\sigma_n$} ($(C)+(0,-5.6)$);
-  \draw[->] ($(C)+(0,-6.0)$) -- node[above,sloped]{\small publish $\sigma^{\star}$} ($(E1)+(0,-6.0)$);
-  \draw[->] ($(C)+(0,-6.3)$) -- node[above,sloped]{\small publish $\sigma^{\star}$} ($(En)+(0,-6.3)$);
+  \draw[msg] ($(E1)+(0,-5.9)$) -- node[above,sloped,near start]{$\sigma_1$} ($(C)+(0,-5.9)$);
+  \draw[msg] ($(En)+(0,-6.2)$) -- node[above,sloped,near start]{$\sigma_n$} ($(C)+(0,-6.2)$);
+  \draw[msg] ($(C)+(0,-6.6)$) -- node[above,sloped]{publish $\sigma^{\star}$} ($(E1)+(0,-6.6)$);
+  \draw[msg] ($(C)+(0,-6.9)$) -- node[above,sloped]{publish $\sigma^{\star}$} ($(En)+(0,-6.9)$);
 
-  % 5) Certified deletion & quotes
-  \node[anchor=west] at ($(C)+(0,-7.1)$) {\small Delete \& attest};
-  \draw[->] ($(E1)+(0,-7.5)$) -- node[above,sloped,near start]{\small $\RA^{(\mathrm{del})}_1(\mathsf{sid},m^{\star},\sigma^{\star},pk,ctr')$} ($(C)+(0,-7.5)$);
-  \draw[->] ($(En)+(0,-7.8)$) -- node[above,sloped,near start]{\small $\RA^{(\mathrm{del})}_n(\mathsf{sid},m^{\star},\sigma^{\star},pk,ctr')$} ($(C)+(0,-7.8)$);
-
-  % 6) Acceptance (annotation only)
-  \node[anchor=west] at ($(C)+(0,-8.6)$) {\small Verify $\sigma^{\star}$ and all fresh $\{\RA^{(\mathrm{del})}_i\}$};
+  % 5) Certified deletion & RA_DEL
+  \draw[msg] ($(E1)+(0,-8.1)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DEL},\mathsf{eid}_1,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.1)$);
+  \draw[msg] ($(En)+(0,-8.4)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DEL},\mathsf{eid}_n,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.4)$);
 \end{tikzpicture}
-\caption{Protocol message flow for \prot{}: initial RA, in-enclave DKG, commit of $(m^{\star},\mathsf{sid})$, threshold signing, and post-delete attestations.}
+\caption{QuanTEEum message flow: RA$^{(\mathrm{JOIN})}$ (JOIN), RA$_\mathrm{DKG}$ (bind $pk$), Commit $m^{\star}$, Sign, RA$_\mathrm{DEL}$ (delete).}
 \label{fig:flow}
 \end{figure}
+
+\paragraph{Roles.}
+Parties $\{P_1,\dots,P_n\}$ run enclaves $\{E_1,\dots,E_n\}$.
+A (rotating) coordinator $C$ orchestrates rounds but learns no secrets.
+All protocol traffic (JOIN, DKG, Commit, Sign, Delete) is carried over
+\emph{attested secure channels} (e.g., RA–TLS) whose channel binding includes an
+ephemeral enclave public key $\mathsf{eid}$ attested by the enclave.
+
+\paragraph{Session binding.}
+We use DKG-first. A session identifier $\mathsf{sid}$ is derived
+\[
+  \mathsf{sid} \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce}),
+\]
+and is embedded in all protocol messages and in the attestation \emph{reportdata}.
+Here $\mathsf{nonce}$ is a fresh 128-bit value chosen by $C$ at JOIN.
+The designated message $m^{\star}$ is \emph{frozen later} by a Commit step
+(after DKG and before signing) and appears in the deletion attestation.
+
+\paragraph{Parameters.}
+\begin{itemize}[leftmargin=*,itemsep=0.25em]
+  \item $\mathsf{suite}$: cryptographic suite identifier (curve/group, hash, domain separators, transcript encoding, threshold-signing variant).
+  \item $\mathsf{policy}$: canonical verifier policy (e.g., $n,t$, minimum $\mathsf{DEL}$ attestations $k$, vendor/diversity constraints, RA roots, allowed measurements, freshness-oracle details).
+  \item $\mathsf{policy\_hash} := H(\mathsf{policy})$ (committed by $\mathsf{sid}$).
+  \item $\mathsf{nonce}$: 128-bit coordinator nonce ensuring $\mathsf{sid}$ uniqueness.
+  \item $\mathsf{eid}$: enclave’s attested ephemeral DH/public key (per session), also used to bind the RA–TLS channel.
+\end{itemize}
+
+\paragraph{Attestation reportdata (aux).}
+We use \emph{phases} $\mathsf{phase}\in\{\mathsf{JOIN},\mathsf{DKG},\mathsf{DEL}\}$ in the reportdata; no counters/timestamps.
+All encodings are length-delimited and unambiguous.
+\begin{align*}
+  \text{RA}^{(\mathrm{JOIN})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{phase}=\mathsf{JOIN},\ \mathsf{eid}) \\
+  \text{RA}^{(\mathsf{DKG})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{phase}=\mathsf{DKG},\ \mathsf{eid},\ pk) \\
+  \text{RA}^{(\mathrm{DEL})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{phase}=\mathsf{DEL},\ \mathsf{eid},\ pk,\ m^{\star},\ \sigma^{\star})
+\end{align*}
+Intuition: RA$^{(\mathrm{JOIN})}$ gates participation and binds $\mathsf{eid}$ to $\mathsf{sid}$; RA$^{(\mathsf{dkg})}$ binds the DKG result $pk$ to $\mathsf{sid}$ and $\mathsf{eid}$;
+RA$^{(\mathrm{DEL})}$ certifies deletion \emph{after} producing the unique output $(m^{\star},\sigma^{\star})$.
+
+\paragraph{Freshness and anti-replay.}
+We rely on an append-only \emph{freshness oracle} (e.g., transparency log or notary quorum) that stores
+entries keyed by $(\mathsf{sid},\mathsf{phase},\mathsf{eid}) \mapsto \text{digest(quote)}$ and enforces:
+(i) \emph{uniqueness}: at most one entry per key; and
+(ii) \emph{order}: for each $(\mathsf{sid},\mathsf{eid})$, $\mathsf{DKG}$ must precede $\mathsf{DEL}$ (JOIN optional).
+Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same $(\mathsf{sid},\mathsf{eid})$.
+
+\paragraph{Policy checks:}
+\begin{description}
+  \item[\textbf{JOIN:}] $C$ broadcasts $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$.
+  Each enclave locally admits $\mathsf{policy}$ (e.g., allowlist or operator-signed), then emits RA$^{(\mathrm{JOIN})}$.
+  $C$ proceeds only with enclaves whose RA$^{(\mathrm{JOIN})}$ verifies and whose $\mathsf{sid}$ matches.
+  \item[\textbf{DKG:}] Enclaves run DKG over RA-bound channels; after DKG each emits RA$^{(\mathsf{dkg})}$ with $(\mathsf{sid},\mathsf{DKG},\mathsf{eid},pk)$.
+  $C$ ensures all RA$^{(\mathsf{dkg})}$ bind to the same $(\mathsf{sid},pk)$.
+  \item[\textbf{Verification:}] An external verifier recomputes $\mathsf{policy\_hash}$ from its configured $\mathsf{policy}$,
+  checks that $\mathsf{sid}$ commits to it, and accepts iff:
+  \begin{enumerate}
+    \item[(a)] $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$,
+    \item[(b)] there are at least $k$ valid RA$^{(\mathrm{DEL})}$ with distinct $\mathsf{eid}$ satisfying diversity constraints, and
+    \item[(c)] each such $\mathsf{eid}$ has a prior RA$^{(\mathsf{DKG})}$ in the freshness oracle for the same $(\mathsf{sid},pk)$.
+  \end{enumerate}
+\end{description}
 
 \subsection*{Interfaces and notation}
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
