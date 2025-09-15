@@ -66,12 +66,15 @@ We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure DKG (e.g.
 \subsection{TEE trust and remote attestation}
 Each party $P_i$ hosts an enclave $E_i$ implementing \prot{}. We assume:
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
-  \item \textbf{Code identity}: attestation binds a measurement (\emph{code hash}) and policy to outputs.
+  \item \textbf{Code identity}: attestation binds a code measurement and the \emph{auxiliary reportdata} to outputs; verifier policy is committed via $\mathsf{policy\_hash}$ in $\mathsf{sid}$.
   \item \textbf{Sealed state semantics}: used only pre-signing to persist the DKG result across a crash.
-  \item \textbf{Freshness/anti-replay}: a monotonic epoch is available (hardware counter or append-only log) and is bound into attestations.
-  \item \textbf{Deletion API}: an enclave can make shares unrecoverable (\emph{zeroization}) and prove the transition with attestation carrying auxiliary data.
+  \item \textbf{Freshness/anti-replay}: a monotonic epoch is available (hardware counter or external append-only anchor) and is bound into attestations as a counter $\mathsf{ctr}\in\{0,1,2\}$ corresponding to JOIN, DKG, and DEL.
+  \item \textbf{Deletion API}: an enclave can make shares unrecoverable (\emph{zeroization}) and prove the transition with an attestation carrying auxiliary data.
 \end{itemize}
-We \emph{do not} assume perfect side-channel resistance or that all rollback vectors are impossible; instead we bind acceptance to freshness predicates and a one-shot latch.
+We \emph{do not} assume perfect side-channel resistance or that all rollback vectors are impossible; instead we bind acceptance to the \emph{freshness predicate} and to a one-shot latch.
+
+\paragraph{Assumption (Replay protection \textsf{Fresh}).}
+There exists a predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})\!\in\!\{0,1\}$ enforcing per-$(\mathsf{sid},\mathsf{eid})$ \emph{uniqueness} and \emph{strict counter monotonicity} $0\!\rightarrow\!1\!\rightarrow\!2$. The verifier accepts at most one quote for each $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$ and any $\mathsf{ctr}{=}2$ (DEL) must be fresh relative to previously accepted $\mathsf{ctr}\in\{0,1\}$. No trusted time is required; realizations include enclave-backed monotonic storage or an external append-only anchor.
 
 \subsection{Adversary and network}
 The network is asynchronous with eventual delivery. The adversary may statically corrupt up to $f$ enclaves and their hosts and is rushing. We target $t=n$ for strongest one-shot semantics; extensions to $t<n$ are discussed in \S\ref{sec:discussion}.
