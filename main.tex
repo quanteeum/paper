@@ -110,25 +110,25 @@ The network is asynchronous with eventual delivery. The adversary may statically
 
   % LEFT-MARGIN ANNOTATIONS (white boxes) to avoid any overlap with arrows
   \node[ann] at (-0.9,-1.0) {JOIN / RA$^{(\mathrm{JOIN})}$ (attested channels; $\mathsf{sid}$ fixed)};
-  \node[ann] at (-0.9,-2.8) {In-enclave DKG (Schnorr / FROST) and RA$_\mathrm{DKG}$};
+  \node[ann] at (-0.9,-2.8) {In-enclave DKG (Schnorr / FROST) and RA$^{(\mathrm{DKG})}$};
   \node[ann] at (-0.9,-5.0) {Commit $m^{\star}$ for $\mathsf{sid}$};
   \node[ann] at (-0.9,-6.2) {Threshold sign};
-  \node[ann] at (-0.9,-8.2) {Delete \& RA$_\mathrm{DEL}$ (post-output)};
-  \node[ann] at (-0.9,-9.8) {Verifier: check $\sigma^{\star}$ and $k$ fresh RA$_\mathrm{DEL}$ with prior RA$_\mathrm{DKG}$.};
+  \node[ann] at (-0.9,-8.2) {Delete \& RA$^{(\mathrm{DEL})}$ (post-output)};
+  \node[ann] at (-0.9,-9.8) {Verifier: check $\sigma^{\star}$ and $k$ fresh RA$^{(\mathrm{DEL})}$ with prior RA$^{(\mathrm{DKG})}$.};
 
-  % 1) JOIN / RA_0
-  \draw[msg] ($(E1)+(0,-1.2)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{JOIN},\mathsf{eid}_1)$} ($(C)+(0,-1.2)$);
-  \draw[msg] ($(En)+(0,-1.5)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{JOIN},\mathsf{eid}_n)$} ($(C)+(0,-1.5)$);
+  % 1) JOIN / RA^{(JOIN)}
+  \draw[msg] ($(E1)+(0,-1.2)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{JOIN})}(\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_1)$} ($(C)+(0,-1.2)$);
+  \draw[msg] ($(En)+(0,-1.5)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{JOIN})}(\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_n)$} ($(C)+(0,-1.5)$);
 
-  % 2) DKG (peer-to-peer) + RA_DKG
+  % 2) DKG (peer-to-peer) + RA^{(DKG)}
   \draw[<->,densely dotted,line width=0.4pt] ($(E1)+(0,-2.8)$) -- node[above]{shares/commitments} ($(Ed)+(0,-2.8)$);
   \draw[<->,densely dotted,line width=0.4pt] ($(Ed)+(0,-3.1)$) -- ($(En)+(0,-3.1)$);
-  \draw[msg] ($(E1)+(0,-3.4)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DKG},\mathsf{eid}_1,pk)$} ($(C)+(0,-3.4)$);
-  \draw[msg] ($(En)+(0,-3.7)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DKG},\mathsf{eid}_n,pk)$} ($(C)+(0,-3.7)$);
+  \draw[msg] ($(E1)+(0,-3.4)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DKG})}(\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid}_1,pk)$} ($(C)+(0,-3.4)$);
+  \draw[msg] ($(En)+(0,-3.7)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DKG})}(\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid}_n,pk)$} ($(C)+(0,-3.7)$);
 
   % 3) Commit (freeze message for this sid)
   \draw[msg] ($(C)+(0,-4.8)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(E1)+(0,-4.8)$);
-  \draw[msg] ($(E1)+(0,-5.1)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(En)+(0,-5.1)$);
+  \draw[msg] ($(C)+(0,-5.1)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(En)+(0.2,-5.1)$);
 
   % 4) Sign (partials to aggregate)
   \draw[msg] ($(E1)+(0,-5.9)$) -- node[above,sloped,near start]{$\sigma_1$} ($(C)+(0,-5.9)$);
@@ -136,11 +136,11 @@ The network is asynchronous with eventual delivery. The adversary may statically
   \draw[msg] ($(C)+(0,-6.6)$) -- node[above,sloped]{publish $\sigma^{\star}$} ($(E1)+(0,-6.6)$);
   \draw[msg] ($(C)+(0,-6.9)$) -- node[above,sloped]{publish $\sigma^{\star}$} ($(En)+(0,-6.9)$);
 
-  % 5) Certified deletion & RA_DEL
-  \draw[msg] ($(E1)+(0,-8.1)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DEL},\mathsf{eid}_1,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.1)$);
-  \draw[msg] ($(En)+(0,-8.4)$) -- node[above,sloped,near start]{$\RA(\mathsf{sid},\mathrm{DEL},\mathsf{eid}_n,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.4)$);
+  % 5) Certified deletion & RA^{(DEL)}
+  \draw[msg] ($(E1)+(0,-8.1)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DEL})}(\mathsf{sid},\mathsf{ctr}{=}2,\mathsf{eid}_1,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.1)$);
+  \draw[msg] ($(En)+(0,-8.4)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DEL})}(\mathsf{sid},\mathsf{ctr}{=}2,\mathsf{eid}_n,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.4)$);
 \end{tikzpicture}
-\caption{QuanTEEum message flow: RA$^{(\mathrm{JOIN})}$ (JOIN), RA$_\mathrm{DKG}$ (bind $pk$), Commit $m^{\star}$, Sign, RA$_\mathrm{DEL}$ (delete).}
+\caption{QuanTEEum message flow: RA$^{(\mathrm{JOIN})}$ (JOIN), RA$^{(\mathrm{DKG})}$ (bind $pk$), Commit $m^{\star}$, Sign, RA$^{(\mathrm{DEL})}$ (delete).}
 \label{fig:flow}
 \end{figure}
 
@@ -164,43 +164,41 @@ The designated message $m^{\star}$ is \emph{frozen later} by a Commit step
 \paragraph{Parameters.}
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
   \item $\mathsf{suite}$: cryptographic suite identifier (curve/group, hash, domain separators, transcript encoding, threshold-signing variant).
-  \item $\mathsf{policy}$: canonical verifier policy (e.g., $n,t$, minimum $\mathsf{DEL}$ attestations $k$, vendor/diversity constraints, RA roots, allowed measurements, freshness-oracle details).
+  \item $\mathsf{policy}$: canonical verifier policy (e.g., $n,t$, minimum $\mathsf{DEL}$ attestations $k$, vendor/diversity constraints, RA roots, allowed measurements, freshness/replay-protection details).
   \item $\mathsf{policy\_hash} := H(\mathsf{policy})$ (committed by $\mathsf{sid}$).
   \item $\mathsf{nonce}$: 128-bit coordinator nonce ensuring $\mathsf{sid}$ uniqueness.
   \item $\mathsf{eid}$: enclave’s attested ephemeral DH/public key (per session), also used to bind the RA–TLS channel.
 \end{itemize}
 
 \paragraph{Attestation reportdata (aux).}
-We use \emph{phases} $\mathsf{phase}\in\{\mathsf{JOIN},\mathsf{DKG},\mathsf{DEL}\}$ in the reportdata; no counters/timestamps.
+We use a \emph{monotonic counter} $\mathsf{ctr}\in\{0,1,2\}$ carried in the reportdata; no phase tags or timestamps.
 All encodings are length-delimited and unambiguous.
 \begin{align*}
-  \text{RA}^{(\mathrm{JOIN})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{phase}=\mathsf{JOIN},\ \mathsf{eid}) \\
-  \text{RA}^{(\mathsf{DKG})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{phase}=\mathsf{DKG},\ \mathsf{eid},\ pk) \\
-  \text{RA}^{(\mathrm{DEL})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{phase}=\mathsf{DEL},\ \mathsf{eid},\ pk,\ m^{\star},\ \sigma^{\star})
+  \text{RA}^{(\mathrm{JOIN})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}0,\ \mathsf{eid}) \\
+  \text{RA}^{(\mathsf{DKG})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}1,\ \mathsf{eid},\ pk) \\
+  \text{RA}^{(\mathrm{DEL})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}2,\ \mathsf{eid},\ pk,\ m^{\star},\ \sigma^{\star})
 \end{align*}
-Intuition: RA$^{(\mathrm{JOIN})}$ gates participation and binds $\mathsf{eid}$ to $\mathsf{sid}$; RA$^{(\mathsf{dkg})}$ binds the DKG result $pk$ to $\mathsf{sid}$ and $\mathsf{eid}$;
+Intuition: RA$^{(\mathrm{JOIN})}$ gates participation and binds $\mathsf{eid}$ to $\mathsf{sid}$; RA$^{(\mathsf{DKG})}$ binds the DKG result $pk$ to $\mathsf{sid}$ and $\mathsf{eid}$;
 RA$^{(\mathrm{DEL})}$ certifies deletion \emph{after} producing the unique output $(m^{\star},\sigma^{\star})$.
 
 \paragraph{Freshness and anti-replay.}
-We rely on an append-only \emph{freshness oracle} (e.g., transparency log or notary quorum) that stores
-entries keyed by $(\mathsf{sid},\mathsf{phase},\mathsf{eid}) \mapsto \text{digest(quote)}$ and enforces:
-(i) \emph{uniqueness}: at most one entry per key; and
-(ii) \emph{order}: for each $(\mathsf{sid},\mathsf{eid})$, $\mathsf{DKG}$ must precede $\mathsf{DEL}$ (JOIN optional).
-Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same $(\mathsf{sid},\mathsf{eid})$.
+We rely on an abstract predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})$ that captures replay protection via either enclave-backed monotonic storage
+or an external anchor (e.g., blockchain/notary). For each fixed $(\mathsf{sid},\mathsf{eid})$ the verifier accepts at most one quote per counter value and requires
+strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relative to any prior accepted $\mathsf{ctr}{\in}\{0,1\}$; duplicates or non-increasing counters are rejected.
 
 \paragraph{Policy checks:}
 \begin{description}
   \item[\textbf{JOIN:}] $C$ broadcasts $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$.
   Each enclave locally admits $\mathsf{policy}$ (e.g., allowlist or operator-signed), then emits RA$^{(\mathrm{JOIN})}$.
   $C$ proceeds only with enclaves whose RA$^{(\mathrm{JOIN})}$ verifies and whose $\mathsf{sid}$ matches.
-  \item[\textbf{DKG:}] Enclaves run DKG over RA-bound channels; after DKG each emits RA$^{(\mathsf{dkg})}$ with $(\mathsf{sid},\mathsf{DKG},\mathsf{eid},pk)$.
-  $C$ ensures all RA$^{(\mathsf{dkg})}$ bind to the same $(\mathsf{sid},pk)$.
+  \item[\textbf{DKG:}] Enclaves run DKG over RA-bound channels; after DKG each emits RA$^{(\mathsf{DKG})}$ with $(\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid},pk)$.
+  $C$ ensures all RA$^{(\mathsf{DKG})}$ bind to the same $(\mathsf{sid},pk)$.
   \item[\textbf{Verification:}] An external verifier recomputes $\mathsf{policy\_hash}$ from its configured $\mathsf{policy}$,
   checks that $\mathsf{sid}$ commits to it, and accepts iff:
   \begin{enumerate}
     \item[(a)] $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$,
     \item[(b)] there are at least $k$ valid RA$^{(\mathrm{DEL})}$ with distinct $\mathsf{eid}$ satisfying diversity constraints, and
-    \item[(c)] each such $\mathsf{eid}$ has a prior RA$^{(\mathsf{DKG})}$ in the freshness oracle for the same $(\mathsf{sid},pk)$.
+    \item[(c)] each such RA$^{(\mathrm{DEL})}$ is \emph{fresh}, i.e., $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})},\mathsf{sid}){=}1$ and reflects strict counter increase relative to any previously accepted quotes for $(\mathsf{sid},\mathsf{eid})$ (JOIN optional, DKG precedes DEL).
   \end{enumerate}
 \end{description}
 
@@ -212,10 +210,10 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
   \item $\textsf{RA.Verify}(\mathsf{RA};\ \textsf{allow\_meas},\ \textsf{roots}) \in \{0,1\}$:
   verify signature under trusted RA roots and check the code measurement against the allowlist.
 
-  \item $\textsf{Oracle.Append}(\mathsf{sid},\mathsf{phase},\mathsf{eid},\mathsf{RA})
-  \in \{\mathsf{ok},\mathsf{dup},\mathsf{order\_err}\}$:
-  append the quote’s digest to the append-only freshness oracle keyed by $(\mathsf{sid},\mathsf{phase},\mathsf{eid})$;
-  returns $\mathsf{dup}$ on a repeat key and $\mathsf{order\_err}$ if $\mathsf{DEL}$ lacks a prior $\mathsf{DKG}$.
+  \item $\textsf{Fresh}(\mathsf{RA},\mathsf{sid}) \in \{0,1\}$:
+  abstract replay-protection predicate that enforces at most one accepted quote per $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$
+  and strict counter monotonicity for $(\mathsf{sid},\mathsf{eid})$ across JOIN ($0$), DKG ($1$), and DEL ($2$).
+  Instantiations include enclave-backed monotonic counters or an external append-only anchor.
 
   \item $\textsf{Latch}(\sid,m^{\star})$:
   bind $m^{\star}$ for this session inside the enclave; subsequent signing attempts under the same $\sid$ abort.
@@ -228,14 +226,14 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
 \begin{enumerate}[leftmargin=*,itemsep=0.25em]
   \item \textbf{Roster selection (policy-based).} The coordinator $C$ selects a set of enclaves $\{E_i\}$ that satisfy $\mathsf{policy}$ (diversity, allowlisted measurements, RA roots).
   \item \textbf{JOIN.} Each invited $E_i$ establishes an RA–bound secure channel (RA–TLS) with ephemeral $\mathsf{eid}_i$ and emits
-        RA$^{(\mathrm{JOIN})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{JOIN},\mathsf{eid}_i)$.
+        RA$^{(\mathrm{JOIN})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_i)$.
   \item \textbf{Peer vetting of JOIN.} $C$ distributes the set of RA$^{(\mathrm{JOIN})}$ quotes to all $E_i$.
         Each $E_i$ verifies that all quotes validate under trusted roots, share the same $\mathsf{sid}$,
         and that the \emph{set} of participants satisfies $\mathsf{policy}$. Enclaves abort if checks fail.
   \item \textbf{DKG.} The enclaves run a Schnorr-threshold DKG (e.g., \FROST{}) entirely in\mbox{-}enclave over the attested channels,
         obtaining additive shares $\{sk_i\}$ and group public key $pk$. Shares remain only in enclave memory; optionally seal $sk_i$ until Commit/Sign.
-  \item \textbf{Bind DKG result.} Each $E_i$ emits RA$^{(\mathsf{DKG})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{DKG},\mathsf{eid}_i,pk)$;
-        $C$ proceeds only if all quotes verify and bind to the same $(\mathsf{sid},pk)$, and appends them to the freshness oracle.
+  \item \textbf{Bind DKG result.} Each $E_i$ emits RA$^{(\mathsf{DKG})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid}_i,pk)$;
+        $C$ proceeds only if all quotes verify and bind to the same $(\mathsf{sid},pk)$.
 \end{enumerate}
 
 \begin{algorithm}[!htbp]
@@ -245,12 +243,11 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
 \begin{algorithmic}[1]
 \State Receive roster invitation and $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ from $C$.
 \State Measure code $\mathsf{meas}$; generate ephemeral $\mathsf{eid}_i$; establish RA--TLS channel bound to $\mathsf{eid}_i$.
-\State $\mathsf{RA}^{(\mathrm{JOIN})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{JOIN},\mathsf{eid}_i)\big)$; send to $C$.
+\State $\mathsf{RA}^{(\mathrm{JOIN})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_i)\big)$; send to $C$.
 \State Receive the set $\{\mathsf{RA}^{(\mathrm{JOIN})}_j\}_j$ for all invited enclaves from $C$; for each, run \textsf{RA.Verify} and check same $\mathsf{sid}$ and that the set satisfies $\mathsf{policy}$; abort on failure.
 \State Run in\mbox{-}enclave Schnorr-threshold DKG (e.g., \FROST{}) $\rightarrow$ local share $sk_i$ and group $pk$.
 \State Optionally \emph{seal} $sk_i$ until Commit/Sign; never export $sk_i$.
-\State $\mathsf{RA}^{(\mathsf{DKG})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{DKG},\mathsf{eid}_i,pk)\big)$; send to $C$.
-\State $\textsf{Oracle.Append}(\mathsf{sid},\mathsf{DKG},\mathsf{eid}_i,\mathsf{RA}^{(\mathsf{DKG})}_i)$.
+\State $\mathsf{RA}^{(\mathsf{DKG})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid}_i,pk)\big)$; send to $C$.
 \State \textbf{return} $pk$ (to the application/coordinator); \textbf{never} reveal $sk_i$.
 \end{algorithmic}
 \end{small}
@@ -282,25 +279,18 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
 \paragraph{Output artifact (published by $C$).}
 We define the \emph{attested one-shot certificate} for session $\sid$ as
 \[
-\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i,\ \pi^{\mathrm{DEL}}_i,\ \pi^{\mathrm{DKG}}_i)\}_{i\in S}\big),
+\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S}\big),
 \]
-where $S$ is an index set with $|S|\ge k$ satisfying the policy’s diversity constraints,
-$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$,
-and $\pi^{\mathrm{DEL}}_i,\pi^{\mathrm{DKG}}_i$ are append-only \emph{oracle receipts} (e.g., Merkle inclusion proofs or notary signatures)
-attesting that the tuples $(\sid,\mathrm{DEL},\mathsf{eid}_i)$ and $(\sid,\mathrm{DKG},\mathsf{eid}_i)$ are uniquely recorded and that
-$\mathrm{DKG}$ precedes $\mathrm{DEL}$.
+where $S$ is an index set with $|S|\ge k$ satisfying the policy’s diversity constraints, and each
+$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
 
 \subsection{Certified deletion and publication}
 \begin{enumerate}[leftmargin=*,itemsep=0.25em]
   \item \textbf{Delete \& attest.} Each enclave $E_i$ executes $\textsf{Del}()$, then generates
-        $\mathsf{RA}^{(\mathrm{DEL})}_i$ with $\mathsf{aux}=(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
+        $\mathsf{RA}^{(\mathrm{DEL})}_i$ with $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
         and sends it to $C$ over the RA–bound channel.
-  \item \textbf{Append to oracle.} For each received quote, $C$ (or $E_i$) invokes
-        $\textsf{Oracle.Append}(\sid,\mathrm{DEL},\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$
-        to obtain a receipt $\pi_i^{\mathrm{DEL}}$;
-        $C$ also fetches (or already holds) the receipt $\pi_i^{\mathrm{DKG}}$ for the corresponding DKG entry.
   \item \textbf{Publish.} $C$ selects a subset $S$ with $|S|\ge k$ satisfying the policy’s diversity constraints and publishes
-        the certificate $\mathsf{AOSC}_\sid$ containing $\sigma^{\star}$ and the attestation+receipt tuples $\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i,\pi_i^{\mathrm{DEL}},\pi_i^{\mathrm{DKG}})\}_{i\in S}$.
+        the certificate $\mathsf{AOSC}_\sid$ containing $\sigma^{\star}$ and the set $\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S}$.
 \end{enumerate}
 
 \begin{algorithm}[!htbp]
@@ -308,13 +298,13 @@ $\mathrm{DKG}$ precedes $\mathrm{DEL}$.
 \label{alg:delete-publish}
 \begin{small}
 \begin{algorithmic}[1]
+\State Initialize $S \gets \emptyset$
 \For{each enclave $E_i$}
-  \State receive $\mathsf{RA}^{(\mathrm{DEL})}_i$ with aux $(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
-  \State $\pi_i^{\mathrm{DEL}} \gets \textsf{Oracle.Append}(\sid,\mathrm{DEL},\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$
-  \State obtain $\pi_i^{\mathrm{DKG}}$ (receipt for $(\sid,\mathrm{DKG},\mathsf{eid}_i)$)
+  \State receive $\mathsf{RA}^{(\mathrm{DEL})}_i$ with aux $(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
+  \State add $(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$ to $S$
 \EndFor
-\State choose $S$ with $|S|\ge k$ meeting diversity constraints
-\State \textbf{publish} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i,\pi_i^{\mathrm{DEL}},\pi_i^{\mathrm{DKG}})\}_{i\in S})$
+\State choose a policy-compliant subset $S' \subseteq S$ with $|S'|\ge k$
+\State \textbf{publish} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},S')$
 \end{algorithmic}
 \end{small}
 \end{algorithm}
@@ -324,17 +314,15 @@ $\mathrm{DKG}$ precedes $\mathrm{DEL}$.
 \label{alg:verify-aosc}
 \begin{small}
 \begin{algorithmic}[1]
-\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i,\pi_i^{\mathrm{DEL}},\pi_i^{\mathrm{DKG}})\}_{i\in S})$
-\State \textbf{Params:} trusted RA roots, allowed measurement set $\textsf{allow\_meas}$, policy (to rederive $\mathsf{policy\_hash}$ and diversity), freshness-oracle public key / Merkle root
-\State \textbf{(Optional)} If $\mathsf{nonce}$ is included in $\mathsf{AOSC}_\sid$, recompute $\sid \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce})$ and check equality
+\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S})$
+\State \textbf{Params:} trusted RA roots, allowed measurement set $\textsf{allow\_meas}$, policy (to rederive $\mathsf{policy\_hash}$ and diversity), freshness predicate \textsf{Fresh}
+\State \textbf{(Optional)} If $\mathsf{nonce}$ is included, recompute $\sid \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce})$ and check equality
 \State Assert $\mathsf{policy\_hash}$ matches the verifier’s configured policy; check $|S|\ge k$ and diversity constraints on $\{\mathsf{eid}_i\}_{i\in S}$
 \State Check $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$
 \For{each $i\in S$}
   \State $\textbf{(a)}$ \textsf{RA.Verify}$(\mathsf{RA}^{(\mathrm{DEL})}_i;\ \textsf{allow\_meas},\ \text{RA roots})=1$
-  \State $\textbf{(b)}$ Parse $\mathsf{aux}$ from $\mathsf{RA}^{(\mathrm{DEL})}_i$ and assert $\mathsf{aux}=(\sid,\mathrm{DEL},\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
-  \State $\textbf{(c)}$ \textsf{Oracle.VerifyReceipt}$(\pi_i^{\mathrm{DKG}},\ (\sid,\mathrm{DKG},\mathsf{eid}_i))=1$
-  \State $\textbf{(d)}$ \textsf{Oracle.VerifyReceipt}$(\pi_i^{\mathrm{DEL}},\ (\sid,\mathrm{DEL},\mathsf{eid}_i),\ \mathsf{RA}^{(\mathrm{DEL})}_i)=1$
-  \State $\textbf{(e)}$ Ensure oracle uniqueness and order for this $(\sid,\mathsf{eid}_i)$: exactly one DKG entry; exactly one DEL entry; and DKG \emph{precedes} DEL
+  \State $\textbf{(b)}$ Parse $\mathsf{aux}$ from $\mathsf{RA}^{(\mathrm{DEL})}_i$ and assert $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
+  \State $\textbf{(c)}$ Ensure freshness: $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})}_i,\sid)=1$ and strictly increasing counter vs.\ any prior accepted quotes for $(\sid,\mathsf{eid}_i)$
 \EndFor
 \State \textbf{Accept} iff all checks pass
 \end{algorithmic}
