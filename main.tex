@@ -203,27 +203,52 @@ Verifiers reject any $\mathsf{DEL}$ without a prior $\mathsf{DKG}$ for the same 
 
 \subsection*{Interfaces and notation}
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
-  \item \textsf{RA.GenQuote}$(\text{aux}) \to \RA$: produce a vendor-signed attestation over measurement and \code{aux}.
-  \item \textsf{Fresh}$(\RA,\sid)$: predicate checking counter monotonicity and recency.
-  \item \textsf{Del}(): irrecoverably zeroize in-enclave $sk_i$ and nonces.
+  \item $\textsf{RA.GenQuote}(\mathsf{aux}) \rightarrow \mathsf{RA}$:
+  produce a vendor-signed attestation over the enclave measurement and the byte string $\mathsf{aux}$.
+
+  \item $\textsf{RA.Verify}(\mathsf{RA};\ \textsf{allow\_meas},\ \textsf{roots}) \in \{0,1\}$:
+  verify signature under trusted RA roots and check the code measurement against the allowlist.
+
+  \item $\textsf{Oracle.Append}(\mathsf{sid},\mathsf{phase},\mathsf{eid},\mathsf{RA})
+  \in \{\mathsf{ok},\mathsf{dup},\mathsf{order\_err}\}$:
+  append the quote’s digest to the append-only freshness oracle keyed by $(\mathsf{sid},\mathsf{phase},\mathsf{eid})$;
+  returns $\mathsf{dup}$ on a repeat key and $\mathsf{order\_err}$ if $\mathsf{DEL}$ lacks a prior $\mathsf{DKG}$.
+
+  \item $\textsf{Latch}(\sid,m^{\star})$:
+  bind $m^{\star}$ for this session inside the enclave; subsequent signing attempts under the same $\sid$ abort.
+
+  \item $\textsf{Del}()$:
+  irrecoverably zeroize the in-enclave key material and nonces (invoked before RA$^{(\mathrm{DEL})}$).
 \end{itemize}
 
 \subsection{Setup and DKG}
 \begin{enumerate}[leftmargin=*,itemsep=0.25em]
-  \item Each $E_i$ boots, measures code, and publishes an initial quote $\RA_i^{(0)}$.
-  \item Enclaves run a standard DKG inside enclaves to obtain additive shares $\{sk_i\}$ and public key $pk$; shares are held only in enclave memory, optionally sealed until signing starts.
+  \item \textbf{Roster selection (policy-based).} The coordinator $C$ selects a set of enclaves $\{E_i\}$ that satisfy $\mathsf{policy}$ (diversity, allowlisted measurements, RA roots).
+  \item \textbf{JOIN.} Each invited $E_i$ establishes an RA–bound secure channel (RA–TLS) with ephemeral $\mathsf{eid}_i$ and emits
+        RA$^{(\mathrm{JOIN})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{JOIN},\mathsf{eid}_i)$.
+  \item \textbf{Peer vetting of JOIN.} $C$ distributes the set of RA$^{(\mathrm{JOIN})}$ quotes to all $E_i$.
+        Each $E_i$ verifies that all quotes validate under trusted roots, share the same $\mathsf{sid}$,
+        and that the \emph{set} of participants satisfies $\mathsf{policy}$. Enclaves abort if checks fail.
+  \item \textbf{DKG.} The enclaves run a Schnorr-threshold DKG (e.g., \FROST{}) entirely in\mbox{-}enclave over the attested channels,
+        obtaining additive shares $\{sk_i\}$ and group public key $pk$. Shares remain only in enclave memory; optionally seal $sk_i$ until Commit/Sign.
+  \item \textbf{Bind DKG result.} Each $E_i$ emits RA$^{(\mathsf{DKG})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{DKG},\mathsf{eid}_i,pk)$;
+        $C$ proceeds only if all quotes verify and bind to the same $(\mathsf{sid},pk)$, and appends them to the freshness oracle.
 \end{enumerate}
 
 \begin{algorithm}[!htbp]
-\caption{\prot{}: \emph{SetupAndDKG} (inside enclaves)}
+\caption{\prot{}: \emph{SetupAndDKG} (inside enclave $E_i$)}
 \label{alg:setup}
 \begin{small}
 \begin{algorithmic}[1]
-\State Each enclave $E_i$ boots; measure code $\mathsf{meas}$.
-\State $\RA_i^{(0)} \gets \textsf{RA.GenQuote}(\text{aux} \gets \mathsf{meas})$; publish $\RA_i^{(0)}$.
-\State All $E_i$ run in\mbox{-}enclave \FROST{} DKG $\to$ additive shares $sk_i$, public key $pk$.
-\State Optionally \emph{seal} $sk_i$ until signing starts.
-\State \textbf{return} $pk$ to the application (never $sk_i$).
+\State Receive roster invitation and $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ from $C$.
+\State Measure code $\mathsf{meas}$; generate ephemeral $\mathsf{eid}_i$; establish RA--TLS channel bound to $\mathsf{eid}_i$.
+\State $\mathsf{RA}^{(\mathrm{JOIN})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{JOIN},\mathsf{eid}_i)\big)$; send to $C$.
+\State Receive the set $\{\mathsf{RA}^{(\mathrm{JOIN})}_j\}_j$ for all invited enclaves from $C$; for each, run \textsf{RA.Verify} and check same $\mathsf{sid}$ and that the set satisfies $\mathsf{policy}$; abort on failure.
+\State Run in\mbox{-}enclave Schnorr-threshold DKG (e.g., \FROST{}) $\rightarrow$ local share $sk_i$ and group $pk$.
+\State Optionally \emph{seal} $sk_i$ until Commit/Sign; never export $sk_i$.
+\State $\mathsf{RA}^{(\mathsf{DKG})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{DKG},\mathsf{eid}_i,pk)\big)$; send to $C$.
+\State $\textsf{Oracle.Append}(\mathsf{sid},\mathsf{DKG},\mathsf{eid}_i,\mathsf{RA}^{(\mathsf{DKG})}_i)$.
+\State \textbf{return} $pk$ (to the application/coordinator); \textbf{never} reveal $sk_i$.
 \end{algorithmic}
 \end{small}
 \end{algorithm}
