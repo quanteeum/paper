@@ -379,14 +379,22 @@ If attestations are independent across vendors/geographies/operators, the minimu
 Verifiers enforce an abstract replay predicate $\textsf{Fresh}$ rather than trusted time. For each $(\sid,\mathsf{eid})$, accept at most one attestation per counter value $\mathsf{ctr}\!\in\!\{0,1,2\}$ (JOIN, DKG, DEL) and require strict monotonicity $0\!\rightarrow\!1\!\rightarrow\!2$. Concretely, for every RA$^{(\mathrm{DEL})}$ in the certificate, check $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})},\sid){=}1$ and that its $\mathsf{aux}$ binds $(\sid,\mathsf{ctr}{=}2,\mathsf{eid},pk,m^{\star},\sigma^{\star})$. Instantiations of $\textsf{Fresh}$ include enclave-backed monotonic storage or an external append-only anchor; no trusted timestamps are assumed.
 
 \section{Applications}\label{sec:apps}
-\subsection{Deterministic finality via one-shot chains}
-For each height $h$, derive $\mathsf{sid}_h := H(h\,\|\,\textsf{policy}\,\|\,\cdots)$ and fix $m_h^{\star}$ to the block header. Validators (or a specialized \emph{finality committee}) host enclaves that run \prot{} to produce $\sigma_h^{\star}$ and deletion attestations. A block is \emph{final} when $(\sigma_h^{\star},\{\RA_i\})$ verifies. Safety reduces to Theorem~\ref{thm:one-shot}; liveness reduces to committee availability. Coordinator rotation prevents a single orchestrator from stalling progress.
 
-\subsection{Quantum-money-flavored tokens}
-Minting a token corresponds to running \prot{} with $m^{\star}$ encoding the serial and policy. Transfer can be modeled by \emph{re-minting} with a new serial bound to the recipient (or by embedding verification keys in a ledger that checks the one-shot predicate on spend). \prot{} supplies a classical OSS now; the same API can be “swapped” for quantum OSS later without redesign.
+\subsection{\prot{} One-shot signatures (OSS)}\label{sec:app-oss}
+We obtain a public-key one-shot signature scheme by instantiating:
+\begin{itemize}[leftmargin=*,itemsep=0.25em]
+  \item \textbf{KeyGen:} run \emph{SetupAndDKG} to produce $(pk)$ for a fresh $\sid$.
+  \item \textbf{Sign:} run \emph{SingleSign} on the target message $m^{\star}$ to obtain $\sigma^{\star}$.
+  \item \textbf{Delete \& certify:} run \emph{DeleteAndPublish} to publish $\mathsf{AOSC}_\sid$ with at least $k$ RA$^{(\mathrm{DEL})}$.
+  \item \textbf{Verify:} run \emph{VerifyAOSC}$(\mathsf{AOSC}_\sid)$ and check $\mathsf{Verify}(pk,m^{\star},\sigma^{\star}){=}1$.
+\end{itemize}
+\emph{Remarks.} The one-shot property follows from the latch plus the acceptance rule (Section~\ref{alg:verify-aosc}) under \textsf{Fresh}. This gives a deployable OSS in the Amos–style sense without quantum hardware; $pk$ is a standard Schnorr key, so existing tooling verifies $\sigma^{\star}$ unchanged.
 
-\subsection{De-facto ceremony-free CRS}
-To derive a one-circuit CRS, set $m^{\star}$ to the transcript-to-be-signed, generate $\sigma^{\star}$, then erase all key material and nonces, attesting deletion. While this is not a plain-model proof of toxic-waste non-existence, it yields an auditable deletion trail with honest-minority robustness and heterogeneity, improving over single-operator ceremonies.
+\subsection{QuanTEEum money}
+Following the OSS-based quantum money with \emph{classical} communication paradigm ~\cite{shmueli2025one}, a coin is a chain of one-shot signatures over successive recipients’ serials/keys: the mint signs Alice’s serial; on transfer, Alice one-shot signs Bob’s, and so on, so the previous signing capability self-destructs after each hop. \prot{} instantiates this with TEEs: each minting/transfer runs a fresh session to produce $(pk,\sigma^{\star},\mathsf{AOSC}_\sid)$ where $m^{\star}$ encodes the coin serial (and, if desired, the next recipient), and RA$^{(\mathrm{DEL})}$ certifies in-enclave key erasure. The “one-shot” effect we rely on is precisely that the signing key can be used only once (collapses thereafter).
+
+\subsection{QuanTEEum ceremony-free CRS (Groth16)}
+We specialize \prot{} to a \emph{distributed certified-deletion} workflow—no DKG, no signing—since a ceremony’s goal is only to ensure toxic waste is unrecoverable. For a circuit with identifier $\mathsf{cid}=H(\text{QAP})$, enclaves jointly compute the Groth16 CRS inside TEEs (deriving any trapdoor material ephemerally), publish the CRS, then zeroize and attest deletion. Concretely, we reuse JOIN (policy/roster, RA–bound channels), compute the CRS in-enclave, and have each enclave emit a deletion quote binding $(\sid,\mathsf{cid},H(\mathsf{CRS}))$. Verifiers accept a CRS iff at least $k$ deletion attestations validate and are fresh. This is not a plain-model proof of “no toxic waste,” but yields an auditable, honest-minority and heterogeneous alternative to single-operator ceremonies for Groth16.
 
 \section{Discussion and Future Work}\label{sec:discussion}
 \paragraph{Why $t\!=\!n$ first?}
