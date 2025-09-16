@@ -309,6 +309,22 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
 \end{small}
 \end{algorithm}
 
+\subsection{VerifyAOSC}
+\begin{enumerate}[leftmargin=*,itemsep=0.25em]
+  \item \textbf{Parse.} Read $\mathsf{AOSC}_\sid=(\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},S'$.
+        Recompute $\mathsf{policy\_hash}$ from the verifier’s configured policy; if $\mathsf{nonce}$ is present, recompute $\sid$ and check equality.
+        Check $|S|\ge k$ and policy diversity constraints on $\{\mathsf{eid}_i\}$.
+  \item \textbf{Signature.} Verify $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$.
+  \item \textbf{Attestations.} For each $(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\in S$:
+        
+        (a) run $\textsf{RA.Verify}(\mathsf{RA}^{(\mathrm{DEL})}_i;\textsf{allow\_meas},\textsf{roots})$;
+        
+        (b) parse $\mathsf{aux}$ and assert $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$;
+        
+        (c) ensure freshness via $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})}_i,\sid)=1$ with strict counter monotonicity for $(\sid,\mathsf{eid}_i)$.
+  \item \textbf{Decision.} Accept iff all checks pass.
+\end{enumerate}
+
 \begin{algorithm}[!htbp]
 \caption{\prot{}: \emph{VerifyAOSC}$(\mathsf{AOSC}_\sid)$}
 \label{alg:verify-aosc}
