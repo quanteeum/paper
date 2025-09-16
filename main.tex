@@ -24,7 +24,6 @@
 \newcommand{\Att}{\mathsf{AttestDelete}}
 \newcommand{\RA}{\mathsf{RA}}
 \newcommand{\FROST}{\textsf{FROST}}
-\newcommand{\cFROST}{\FROST{}~\cite{komlo2020frost}}
 \newcommand{\oss}{\textsf{OSS}}
 \newcommand{\code}[1]{\texttt{#1}}
 
@@ -61,8 +60,8 @@ OSS capture a powerful capability: make \emph{exactly-one} valid signature and t
 \subsection{One-shot signatures in brief}
 An \oss{} scheme exposes $(\mathsf{Setup},\mathsf{KeyGen},\mathsf{SignOnce},\mathsf{Verify})$ with the property that for any keypair, at most one signature on at most one message is computationally feasible. Security is captured by a game where the adversary, after arbitrary queries \emph{except} a second signing, fails to produce two distinct valid signatures or one valid signature after certified deletion.
 
-\subsection{Threshold signatures \cFROST{}}
-We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure DKG (e.g., \FROST{}). Parties hold additive shares $\{sk_i\}$ with public key $pk$, and interactive signing produces $\sigma$ on message $m$. Unforgeability holds if fewer than $t$ shares leak and nonces are not reused.
+\subsection{Threshold signatures}
+We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure DKG (e.g., FROST ~\cite{komlo2020frost}). Parties hold additive shares $\{sk_i\}$ with public key $pk$, and interactive signing produces $\sigma$ on message $m$. Unforgeability holds if fewer than $t$ shares leak and nonces are not reused.
 
 \subsection{TEE trust and remote attestation}
 Each party $P_i$ hosts an enclave $E_i$ implementing \prot{}. We assume:
