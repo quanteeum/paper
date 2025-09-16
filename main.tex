@@ -413,10 +413,19 @@ Replace RA with bonded claims: each operator escrows collateral and signs a dele
 Enforce at least two TEE vendors, distinct cloud providers, and distinct administrative domains. Acceptance SHOULD require a diversity predicate (e.g., vendor quorum).
 
 \paragraph{Upgrade to quantum OSS.}
-Once practical, swap the attestation mechanism for a quantum-certified deletion proof with the same acceptance predicate. Because \prot{} already binds $(\mathsf{sid},m^{\star},\sigma^{\star},pk)$ into attestations, the application layer remains unchanged.
+Once practical, it should be possible to swap the attestation mechanism for a quantum-certified deletion proof with the same acceptance predicate. Because \prot{} already binds $(\mathsf{sid},m^{\star},\sigma^{\star},pk)$ into attestations, the application layer remains unchanged.
+
+\paragraph{Supply-chain hardening and RA$^{(\mathrm{DEL})}$ practicality.}
+Real deployments benefit from reproducible builds, deterministic enclave measurements, and signed SBOMs to reduce supply-chain risk. Practically, strong single-device “certified deletion” remains challenging; our distributed design amortizes this by requiring $k$ independent RA$^{(\mathrm{DEL})}$ across heterogeneous TEEs. In short, deletion is certified \emph{in aggregate} today, while leaving room to adopt stronger per-device RA$^{(\mathrm{DEL})}$ once platforms mature.
+
+\paragraph{Repairable threshold schemes (availability vs.\ unclonability).}
+Operationally, a single enclave failure can strand funds if $t\!=\!n$. One option is to admit \emph{repairable/refreshable} threshold techniques pre\mbox{-}Commit (e.g., share refresh or repair across a larger roster) to tolerate crashes. However, after Commit the repair path \emph{must} be disabled to preserve one\mbox{-}shot semantics. This exposes a trade-off: higher availability vs.\ a larger attack surface. A practical mitigation is to increase $k$ (number of RA$^{(\mathrm{DEL})}$) and enforce stronger diversity when repair is enabled.
+
+\paragraph{On-chain instantiation and incentives.}
+A blockchain (L1/L2) can instantiate \textsf{Fresh} and incentivize participation: enclaves (or $C$) post JOIN/DEL quotes as transactions keyed by $(\sid,\mathsf{eid},\mathsf{ctr})$, and verifiers query chain state to enforce uniqueness and $0\!\rightarrow\!1\!\rightarrow\!2$ monotonicity. Fees/rewards can be paid per accepted RA$^{(\mathrm{DEL})}$, and bonded operators can be \emph{slashed} on detectable equivocation. This is complementary to the cryptoeconomic attestation variant above and yields a fully offline-verifiable trail if desired.
 
 \section{Conclusion}
-\prot{} offers a deployable path to one-shot capabilities by composing threshold signatures with certified deletion inside heterogeneous TEEs. The exact-one property becomes an honest-minority statement with additive security across independent attestations. The same interface smoothly upgrades to future quantum OSS, enabling deterministic finality, quantum-money-like assets, and auditable substitutes for toxic-waste ceremonies.
+\prot{} offers a deployable path to one-shot capabilities by composing threshold signatures with certified deletion inside heterogeneous TEEs. The exact-one property becomes an honest-minority statement with additive security across independent attestations. The same interface smoothly upgrades to future quantum OSS, enabling \emph{QuanTEEum money} and ceremony-free Groth16 CRS today, while preserving a clean upgrade path as TEE attestations and quantum back ends strengthen.
 
 \bibliographystyle{splncs04}
 \bibliography{refs}
