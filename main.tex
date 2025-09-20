@@ -75,11 +75,8 @@ A one-shot signature scheme \cite{amos2020one} is a tuple $(\mathsf{Gen},\mathsf
 \smallskip
 \noindent\emph{One-shot unforgeability:} no probabilistic polynomial-time (PPT) adversary, given $(\mathsf{crs},pk)$ and oracle access to $\mathsf{Sign}(sk,\cdot)$, can output two distinct valid pairs $(m_1,\sigma_1)\neq(m_2,\sigma_2)$ with $\mathsf{Ver}(\mathsf{crs},pk,m_1,\sigma_1)=\mathsf{Ver}(\mathsf{crs},pk,m_2,\sigma_2)=1$ except with negligible probability.
 
-\smallskip
-\noindent\emph{Remarks.} In our instantiation, the public parameters $\mathsf{crs}$ are absorbed into the suite/policy (Section~\ref{sec:protocol}); the secret key is classical but confined to TEEs. 
-
 \subsection{Threshold signatures}
-We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure DKG (e.g., FROST~\cite{komlo2020frost}), where $n$ is the number of participating enclaves and $t$ is the signing threshold. Each party $P_i$ holds an additive secret share $sk_i$; together they define the group public key $pk$, and interactive signing with fresh per-round nonces from any set of $t$ parties produces signature $\sigma$ on message $m$. Security assumes a correct DKG, fewer than $t$ shares exposed, and no nonce reuse or bias. We primarily instantiate $t{=}n$; the case $t{<}n$ is discussed in \S\ref{sec:discussion}.
+We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure, coordinator-orchestrated DKG (e.g., FROST~\cite{komlo2020frost}), where $n$ is the number of participating enclaves and $t$ is the signing threshold. A (possibly untrusted) coordinator $C$ schedules rounds and relays messages but learns no secret material; all DKG/signing traffic is carried over attested channels (RA--TLS), and secret shares $sk_i$ never leave enclaves. Each party $P_i$ holds an additive share $sk_i$; together they define the group public key $pk$, and interactive signing with fresh per-round nonces from any set of $t$ parties produces signature $\sigma$ on message $m$. Security assumes a correct DKG whose transcripts reveal nothing beyond $pk$, fewer than $t$ shares exposed, and no nonce reuse or bias. We primarily instantiate $t{=}n$; the case $t{<}n$ is discussed in \S\ref{sec:discussion}.
 
 \subsection{TEE trust and remote attestation}
 Each party $P_i$ hosts an enclave $E_i$ implementing \prot{}. We assume:
