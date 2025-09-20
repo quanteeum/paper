@@ -7,7 +7,7 @@
 \usepackage{booktabs}
 % Figures (message-flow)
 \usepackage{tikz}
-\usetikzlibrary{calc,arrows.meta,positioning,calc}
+\usetikzlibrary{calc,arrows.meta,positioning}
 \setlist[enumerate]{leftmargin=*,itemsep=0.25em}
 % Algorithm boxes
 \usepackage{algorithm}
@@ -40,7 +40,7 @@
 \begin{abstract}
 One-shot signatures (OSS) have emerged as a versatile abstraction underpinning various blockchain-facing applications. Existing OSS constructions rely on quantum hardware that will not be widely available soon. Naïve emulations using a single trusted execution environment (TEE) inherit brittle unclonability requirements and concentrate integrity risk in one enclave, while certified deletion on a single device is notoriously hard. 
 
-We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive}, as independent deletion attestations strictly raise the minimum cost-of-attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote-attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to QuanTEEum money and de-facto ceremony-free Groth16 CRS generation, and discuss liveness, freshness, and rollback subtleties. 
+We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive}, as independent deletion attestations strictly raise the minimum cost-of-attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to QuanTEEum money and de-facto ceremony-free Groth16 CRS generation, and discuss liveness, freshness, and rollback subtleties. 
 \end{abstract}
 
 \section{Introduction}
@@ -55,7 +55,7 @@ Exact-once acceptance reduces to the infeasibility of recovering a deleted thres
 
 \paragraph{Contributions.}
 \begin{itemize}[leftmargin=*,itemsep=0.25em,topsep=0.25em]
-  \item A formalization of the \emph{exact-one} acceptance condition for one-shot signing in a remote-attestation model with explicit context binding, parameterized by an abstract freshness predicate \textsf{Fresh}.
+  \item A formalization of the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model with explicit context binding, parameterized by an abstract freshness predicate \textsf{Fresh}.
   \item \prot{}: a DKG-first threshold-in-TEE protocol that yields \emph{exactly one} threshold signature on a designated message and a set of per-enclave deletion attestations; security is additive across heterogeneous TEEs.
   \item A verifier-facing artifact and algorithm: the \emph{attested one-shot certificate} $\mathsf{AOSC}_\sid$ and \emph{VerifyAOSC}, enabling third-party validation under \textsf{Fresh}.
   \item Application sketches for (i) QuanTEEum money (quantum-money–flavored tokens) and (ii) de-facto ceremony-free Groth16 CRS via certified deletion.
@@ -73,7 +73,7 @@ A one-shot signature scheme \cite{amos2020one} is a tuple $(\mathsf{Gen},\mathsf
 \emph{Correctness:} if $(pk,sk) \leftarrow \mathsf{Gen}(\mathsf{crs})$ and $\sigma \leftarrow \mathsf{Sign}(sk,m)$ then $\mathsf{Ver}(\mathsf{crs},pk,m,\sigma)=1$. 
 
 \smallskip
-\noindent\emph{One-shot unforgeability:} no PPT adversary, given $(\mathsf{crs},pk)$ and oracle access to $\mathsf{Sign}(sk,\cdot)$, can output two distinct valid pairs $(m_1,\sigma_1)\neq(m_2,\sigma_2)$ with $\mathsf{Ver}(\mathsf{crs},pk,m_1,\sigma_1)=\mathsf{Ver}(\mathsf{crs},pk,m_2,\sigma_2)=1$ except with negligible probability.
+\noindent\emph{One-shot unforgeability:} no probabilistic polynomial-time (PPT) adversary, given $(\mathsf{crs},pk)$ and oracle access to $\mathsf{Sign}(sk,\cdot)$, can output two distinct valid pairs $(m_1,\sigma_1)\neq(m_2,\sigma_2)$ with $\mathsf{Ver}(\mathsf{crs},pk,m_1,\sigma_1)=\mathsf{Ver}(\mathsf{crs},pk,m_2,\sigma_2)=1$ except with negligible probability.
 
 \smallskip
 \noindent\emph{Remarks.} In our instantiation, the public parameters $\mathsf{crs}$ are absorbed into the suite/policy (Section~\ref{sec:protocol}); the secret key is classical but confined to TEEs. 
@@ -95,7 +95,7 @@ We \emph{do not} assume perfect side-channel resistance or that all rollback vec
 There exists a predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})\!\in\!\{0,1\}$ enforcing per-$(\mathsf{sid},\mathsf{eid})$ \emph{uniqueness} and \emph{strict counter monotonicity} $0\!\rightarrow\!1\!\rightarrow\!2$. The verifier accepts at most one quote for each $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$, and any $\mathsf{ctr}{=}2$ (DEL) must be fresh relative to previously accepted $\mathsf{ctr}\in\{0,1\}$. No trusted time is required; realizations include enclave-backed monotonic storage or an external append-only anchor.
 
 \subsection{Adversary and network}
-The network is asynchronous with eventual delivery; the adversary may delay, drop, reorder, and duplicate messages. Channels are authenticated and confidential (RA--TLS). The adversary is rushing and may statically corrupt up to $f$ enclaves and their hosts. We target $t=n$ for strongest one-shot semantics; extensions to $t<n$ are discussed in \S\ref{sec:discussion}.
+The network is asynchronous with eventual delivery; the adversary may delay, drop, reorder, and duplicate messages. Channels are authenticated and confidential (RA--TLS). The adversary is rushing and may statically corrupt up to $f$ enclaves and their hosts. We target $t{=}n$ for strongest one-shot semantics; extensions to $t<n$ are discussed in \S\ref{sec:discussion}.
 
 \section{\prot{} Protocol}\label{sec:protocol}
 
@@ -388,7 +388,7 @@ Suppose two signatures exist. If either is produced without $t$ valid shares, we
 \end{proof}
 
 \paragraph{Liveness.}
-With $t=n$ the protocol requires all enclaves to participate; a crashed or aborting enclave prevents progress. We adopt a bounded timeout: if signing fails, $C$ abandons $\sid$ and re-instantiates with fresh enclaves. In deployments desiring partial progress, \prot{} supports $t<n$ with two caveats: (i) \emph{deletion} attestations must reach $k\!\ge\!t$; (ii) the exact-one property is now conditioned on at least one of the $k$ attesting enclaves being honest.
+With $t{=}n$ the protocol requires all enclaves to participate; a crashed or aborting enclave prevents progress. We adopt a bounded timeout: if signing fails, $C$ abandons $\sid$ and re-instantiates with fresh enclaves. In deployments desiring partial progress, \prot{} supports $t<n$ with two caveats: (i) \emph{deletion} attestations must reach $k\!\ge\!t$; (ii) the exact-one property is now conditioned on at least one of the $k$ attesting enclaves being honest.
 
 \paragraph{Additive security via heterogeneity.}
 If attestations are independent across vendors/geographies/operators, the minimum attack cost is approximately the sum of per-enclave compromise costs (or, more conservatively, the minimum over all subsets of size $t$). We recommend explicit \emph{diversity constraints} in policy (e.g., “at least two vendors and three physical operators”).
