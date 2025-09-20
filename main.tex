@@ -375,17 +375,18 @@ Following the OSS-based quantum money with \emph{classical} communication paradi
 We specialize \prot{} to a \emph{distributed certified-deletion} workflow—no DKG, no signing—since a ceremony’s goal is only to ensure toxic waste is unrecoverable. For a circuit with identifier $\mathsf{cid}=H(\text{QAP})$, enclaves jointly compute the Groth16 CRS inside TEEs (deriving any trapdoor material ephemerally), publish the CRS, then zeroize and attest deletion. Concretely, we reuse JOIN (policy/roster, RA–bound channels), compute the CRS in-enclave, and have each enclave emit a deletion quote binding $(\sid,\mathsf{cid},H(\mathsf{CRS}))$. Verifiers accept a CRS iff at least $k$ deletion attestations validate and are fresh. This is not a plain-model proof of “no toxic waste,” but yields an auditable, honest-minority and heterogeneous alternative to single-operator ceremonies for Groth16.
 
 \section{Discussion and Future Work}\label{sec:discussion}
+
 \paragraph{Why $t\!=\!n$ first?}
 It maximizes the exact-one semantics and simplifies acceptance (\emph{all} attest). Generalizing to $t<n$ is straightforward mechanically but shifts the trust statement to “among the $k\!\ge\!t$ attesters, at least one honest enclave deleted.”
 
 \paragraph{Nonce discipline.}
-Nonce misuse is fatal in Schnorr. All nonce generation and aggregation must occur in-enclave; nonces are zeroized alongside shares and bound to $\sid$.
+Nonce misuse is fatal in Schnorr\mbox{-}style signing. All nonce generation and aggregation must occur in\mbox{-}enclave; nonces are zeroized alongside shares and bound to $\sid$.
 
 \paragraph{Rollback channels.}
 Hardware monotonic counters are ideal but scarce; when unavailable, anchor \textsf{Fresh} in an append-only public log (e.g., consensus chain) and/or a replicated monotonicity oracle.
 
 \paragraph{Cryptoeconomic attestations.}
-Replace RA with bonded claims: each operator escrows collateral and signs a deletion statement $(\sid,m^{*},\sigma^{*})$ under a registered key; slashing conditions penalize equivocation or reuse. This yields weaker, but composable, guarantees and can be \emph{combined} with RA for stronger additivity.
+Augment RA with bonded claims: each operator escrows collateral (and potentially zk-collateral) and signs a deletion statement $(\sid,m^{\star},\sigma^{\star})$ under a registered key; slashing conditions penalize equivocation or reuse. This yields weaker, but composable, guarantees and can be \emph{combined} with RA in hybrid QuanTEEum instantiations for stronger additivity.
 
 \paragraph{Heterogeneity policy.}
 Enforce at least two TEE vendors, distinct cloud providers, and distinct administrative domains. Acceptance SHOULD require a diversity predicate (e.g., vendor quorum).
@@ -394,7 +395,7 @@ Enforce at least two TEE vendors, distinct cloud providers, and distinct adminis
 Once practical, it should be possible to swap the attestation mechanism for a quantum-certified deletion proof with the same acceptance predicate. Because \prot{} already binds $(\mathsf{sid},m^{\star},\sigma^{\star},pk)$ into attestations, the application layer remains unchanged.
 
 \paragraph{Supply-chain hardening and RA$^{(\mathrm{DEL})}$ practicality.}
-Real deployments benefit from reproducible builds, deterministic enclave measurements, and signed SBOMs to reduce supply-chain risk. Practically, strong single-device “certified deletion” remains challenging; our distributed design amortizes this by requiring $k$ independent RA$^{(\mathrm{DEL})}$ across heterogeneous TEEs. In short, deletion is certified \emph{in aggregate} today, while leaving room to adopt stronger per-device RA$^{(\mathrm{DEL})}$ once platforms mature.
+Real deployments benefit from reproducible builds, deterministic enclave measurements, and signed SBOMs to reduce supply-chain risk. Practically, strong single-device “certified deletion” remains challenging; our distributed design amortizes this by requiring $k$ independent RA$^{(\mathrm{DEL})}$ across heterogeneous TEEs. 
 
 \paragraph{Repairable threshold schemes (availability vs.\ unclonability).}
 Operationally, a single enclave failure can strand funds if $t\!=\!n$. One option is to admit \emph{repairable/refreshable} threshold techniques pre\mbox{-}Commit (e.g., share refresh or repair across a larger roster) to tolerate crashes. However, after Commit the repair path \emph{must} be disabled to preserve one\mbox{-}shot semantics. This exposes a trade-off: higher availability vs.\ a larger attack surface. A practical mitigation is to increase $k$ (number of RA$^{(\mathrm{DEL})}$) and enforce stronger diversity when repair is enabled.
