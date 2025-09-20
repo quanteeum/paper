@@ -158,7 +158,7 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
   \draw[msg] ($(E1)+(0,-8.1)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DEL})}(\mathsf{sid},\mathsf{ctr}{=}2,\mathsf{eid}_1,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.1)$);
   \draw[msg] ($(En)+(0,-8.4)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DEL})}(\mathsf{sid},\mathsf{ctr}{=}2,\mathsf{eid}_n,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.4)$);
 \end{tikzpicture}
-\caption{QuanTEEum message flow: RA$^{(\mathrm{JOIN})}$ (JOIN), RA$^{(\mathrm{DKG})}$ (bind $pk$), Commit $m^{\star}$, Sign, RA$^{(\mathrm{DEL})}$ (delete).}
+\caption{QuanTEEum message flow: RA$^{(\mathrm{JOIN})}$, RA$^{(\mathrm{DKG})}$ (bind $pk$), Commit $m^{\star}$, Sign, RA$^{(\mathrm{DEL})}$ (delete sk).}
 \label{fig:flow}
 \end{figure}
 
@@ -166,7 +166,7 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
 Parties $\{P_1,\dots,P_n\}$ run enclaves $\{E_1,\dots,E_n\}$.
 A (rotating) coordinator $C$ orchestrates rounds but learns no secrets.
 All protocol traffic (JOIN, DKG, Commit, Sign, Delete) is carried over
-\emph{attested secure channels} (e.g., RA–TLS) whose channel binding includes an
+\emph{attested secure channels} (e.g., RA--TLS) whose channel binding includes an
 ephemeral enclave public key $\mathsf{eid}$ attested by the enclave.
 
 \paragraph{Session binding.}
@@ -185,7 +185,7 @@ The designated message $m^{\star}$ is \emph{frozen later} by a Commit step
   \item $\mathsf{policy}$: canonical verifier policy (e.g., $n,t$, minimum $\mathsf{DEL}$ attestations $k$, vendor/diversity constraints, RA roots, allowed measurements, freshness/replay-protection details).
   \item $\mathsf{policy\_hash} := H(\mathsf{policy})$ (committed by $\mathsf{sid}$).
   \item $\mathsf{nonce}$: 128-bit coordinator nonce ensuring $\mathsf{sid}$ uniqueness.
-  \item $\mathsf{eid}$: enclave’s attested ephemeral DH/public key (per session), also used to bind the RA–TLS channel.
+  \item $\mathsf{eid}$: enclave’s attested ephemeral DH/public key (per session), also used to bind the RA--TLS channel.
 \end{itemize}
 
 \paragraph{Attestation reportdata (aux).}
@@ -193,7 +193,7 @@ We use a \emph{monotonic counter} $\mathsf{ctr}\in\{0,1,2\}$ carried in the repo
 All encodings are length-delimited and unambiguous.
 \begin{align*}
   \text{RA}^{(\mathrm{JOIN})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}0,\ \mathsf{eid}) \\
-  \text{RA}^{(\mathsf{DKG})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}1,\ \mathsf{eid},\ pk) \\
+  \text{RA}^{(\mathrm{DKG})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}1,\ \mathsf{eid},\ pk) \\
   \text{RA}^{(\mathrm{DEL})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}2,\ \mathsf{eid},\ pk,\ m^{\star},\ \sigma^{\star})
 \end{align*}
 Intuition: RA$^{(\mathrm{JOIN})}$ gates participation and binds $\mathsf{eid}$ to $\mathsf{sid}$; RA$^{(\mathsf{DKG})}$ binds the DKG result $pk$ to $\mathsf{sid}$ and $\mathsf{eid}$;
@@ -206,8 +206,7 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 
 \paragraph{Policy checks:}
 \begin{description}
-  \item[\textbf{JOIN:}] $C$ broadcasts $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$.
-  Each enclave locally admits $\mathsf{policy}$ (e.g., allowlist or operator-signed), then emits RA$^{(\mathrm{JOIN})}$.
+\item[\textbf{JOIN:}] $C$ sends $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ to the selected roster. Each enclave locally admits $\mathsf{policy}$ (e.g., allowlist or operator-signed), then emits RA$^{(\mathrm{JOIN})}$.
   $C$ proceeds only with enclaves whose RA$^{(\mathrm{JOIN})}$ verifies and whose $\mathsf{sid}$ matches.
   \item[\textbf{DKG:}] Enclaves run DKG over RA-bound channels; after DKG each emits RA$^{(\mathsf{DKG})}$ with $(\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid},pk)$.
   $C$ ensures all RA$^{(\mathsf{DKG})}$ bind to the same $(\mathsf{sid},pk)$.
@@ -243,7 +242,7 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 \subsection{Setup and DKG}
 \begin{enumerate}[leftmargin=*,itemsep=0.25em]
   \item \textbf{Roster selection (policy-based).} The coordinator $C$ selects a set of enclaves $\{E_i\}$ that satisfy $\mathsf{policy}$ (diversity, allowlisted measurements, RA roots).
-  \item \textbf{JOIN.} Each invited $E_i$ establishes an RA–bound secure channel (RA–TLS) with ephemeral $\mathsf{eid}_i$ and emits
+  \item \textbf{JOIN.} Each invited $E_i$ establishes an RA–bound secure channel (RA--TLS) with ephemeral $\mathsf{eid}_i$ and emits
         RA$^{(\mathrm{JOIN})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_i)$.
   \item \textbf{Peer vetting of JOIN.} $C$ distributes the set of RA$^{(\mathrm{JOIN})}$ quotes to all $E_i$.
         Each $E_i$ verifies that all quotes validate under trusted roots, share the same $\mathsf{sid}$,
@@ -283,7 +282,7 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 \label{alg:sign}
 \begin{small}
 \begin{algorithmic}[1]
-\State $C$ broadcasts $(m^{\star},\mathsf{sid})$ over the RA–TLS channel (using the already-established $\mathsf{sid}$).
+\State $C$ broadcasts $(m^{\star},\mathsf{sid})$ over the RA--TLS channel (using the already-established $\mathsf{sid}$).
 \For{each enclave $E_i$}
   \State Check $\mathsf{sid}$ equality with local session; abort if mismatched or already latched.
   \State $\textsf{Latch}(\mathsf{sid},m^{\star})$ to bind the one-shot target.
