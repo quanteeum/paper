@@ -293,14 +293,6 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 \end{small}
 \end{algorithm}
 
-\paragraph{Output artifact (published by $C$).}
-We define the \emph{attested one-shot certificate} for session $\sid$ as
-\[
-\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S}\big),
-\]
-where $S$ is an index set with $|S|\ge k$ satisfying the policy’s diversity constraints, and each
-$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
-
 \subsection{Certified deletion and publication}
 \begin{enumerate}[leftmargin=*,itemsep=0.25em]
   \item \textbf{Delete \& attest.} Each enclave $E_i$ executes $\textsf{Del}()$, then generates
@@ -325,6 +317,14 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
 \end{algorithmic}
 \end{small}
 \end{algorithm}
+
+\paragraph{Output artifact (published by $C$).}
+We define the \emph{attested one-shot certificate} for session $\sid$ as
+\[
+\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'}\big),
+\]
+where $S'$ is an index set with $|S'|\ge k$ satisfying the policy’s diversity constraints, and each
+$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
 
 \subsection{VerifyAOSC}
 \begin{enumerate}[leftmargin=*,itemsep=0.25em]
