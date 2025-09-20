@@ -55,11 +55,11 @@ Exact-once acceptance reduces to the infeasibility of recovering a deleted thres
 
 \paragraph{Contributions.}
 \begin{itemize}[leftmargin=*,itemsep=0.25em,topsep=0.25em]
-  \item A formalization of certified deletion and one-shot signing in a remote-attestation model with explicit freshness and context binding.
-  \item \prot{}: a threshold-in-TEE protocol that yields \emph{exactly one} threshold signature and a set of deletion attestations; security is additive across heterogeneous TEEs.
-  \item A pluggable attestation mechanism: TEE RA today; cryptoeconomic attestations; future quantum erasure attestations---preserving the OSS API.
-  \item Application sketches for (i) deterministic finality, (ii) quantum-money-style tokens, and (iii) de-facto ceremony-free CRS derivations.
-  \item A discussion of liveness under abort, anti-replay, rollback resistance, and heterogeneity as defense-in-depth.
+  \item A formalization of the \emph{exact-one} acceptance condition for one-shot signing in a remote-attestation model with explicit context binding, parameterized by an abstract freshness predicate \textsf{Fresh}.
+  \item \prot{}: a DKG-first threshold-in-TEE protocol that yields \emph{exactly one} threshold signature on a designated message and a set of per-enclave deletion attestations; security is additive across heterogeneous TEEs.
+  \item A verifier-facing artifact and algorithm: the \emph{attested one-shot certificate} $\mathsf{AOSC}_\sid$ and \emph{VerifyAOSC}, enabling third-party validation under \textsf{Fresh}.
+  \item Application sketches for (i) QuanTEEum money (quantum-money–flavored tokens) and (ii) de-facto ceremony-free Groth16 CRS via certified deletion.
+  \item A discussion of liveness under abort, anti-replay/rollback resistance, policy-driven heterogeneity as defense-in-depth, and on-chain instantiation/incentives.
 \end{itemize}
 
 \section{Background and Model}
