@@ -240,42 +240,32 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 \end{itemize}
 
 \subsection{Setup and DKG}
-\begin{enumerate}[leftmargin=*,itemsep=0.25em]
-  \item \textbf{Roster selection (policy-based).} The coordinator $C$ selects a set of enclaves $\{E_i\}$ that satisfy $\mathsf{policy}$ (diversity, allowlisted measurements, RA roots).
-  \item \textbf{JOIN.} Each invited $E_i$ establishes an RA–bound secure channel (RA--TLS) with ephemeral $\mathsf{eid}_i$ and emits
-        RA$^{(\mathrm{JOIN})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_i)$.
-  \item \textbf{Peer vetting of JOIN.} $C$ distributes the set of RA$^{(\mathrm{JOIN})}$ quotes to all $E_i$.
-        Each $E_i$ verifies that all quotes validate under trusted roots, share the same $\mathsf{sid}$,
-        and that the \emph{set} of participants satisfies $\mathsf{policy}$. Enclaves abort if checks fail.
-  \item \textbf{DKG.} The enclaves run a Schnorr-threshold DKG (e.g., \FROST{}) entirely in\mbox{-}enclave over the attested channels,
-        obtaining additive shares $\{sk_i\}$ and group public key $pk$. Shares remain only in enclave memory; optionally seal $sk_i$ until Commit/Sign.
-  \item \textbf{Bind DKG result.} Each $E_i$ emits RA$^{(\mathsf{DKG})}$ with $\mathsf{aux}=(\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid}_i,pk)$;
-        $C$ proceeds only if all quotes verify and bind to the same $(\mathsf{sid},pk)$.
-\end{enumerate}
+\emph{Algorithm~\ref{alg:setup} performs policy-based roster selection, attested JOIN with peer vetting, runs the in\mbox{-}enclave threshold DKG coordinated by $C$, and binds the group key via RA$^{(\mathrm{DKG})}$.}
 
 \begin{algorithm}[!htbp]
-\caption{\prot{}: \emph{SetupAndDKG} (inside enclave $E_i$)}
+\caption{\prot{}: \emph{SetupAndDKG}}
 \label{alg:setup}
 \begin{small}
 \begin{algorithmic}[1]
-\State Receive roster invitation and $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ from $C$.
-\State Measure code $\mathsf{meas}$; generate ephemeral $\mathsf{eid}_i$; establish RA--TLS channel bound to $\mathsf{eid}_i$.
-\State $\mathsf{RA}^{(\mathrm{JOIN})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_i)\big)$; send to $C$.
-\State Receive the set $\{\mathsf{RA}^{(\mathrm{JOIN})}_j\}_j$ for all invited enclaves from $C$; for each, run \textsf{RA.Verify} and check same $\mathsf{sid}$ and that the set satisfies $\mathsf{policy}$; abort on failure.
-\State Run in\mbox{-}enclave Schnorr-threshold DKG (e.g., \FROST{}) $\rightarrow$ local share $sk_i$ and group $pk$.
-\State Optionally \emph{seal} $sk_i$ until Commit/Sign; never export $sk_i$.
-\State $\mathsf{RA}^{(\mathsf{DKG})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid}_i,pk)\big)$; send to $C$.
-\State \textbf{return} $pk$ (to the application/coordinator); \textbf{never} reveal $sk_i$.
+\State $C$ selects a roster $R$ of enclaves satisfying $\mathsf{policy}$ (diversity, allowlisted measurements, RA roots) and sends $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ to all $E_i\in R$.
+\For{each enclave $E_i\in R$}
+  \State Measure code $\mathsf{meas}$; generate ephemeral $\mathsf{eid}_i$; establish RA--TLS channel bound to $\mathsf{eid}_i$.
+  \State $\mathsf{RA}^{(\mathrm{JOIN})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_i)\big)$; send to $C$.
+\EndFor
+\State $C$ distributes $\{\mathsf{RA}^{(\mathrm{JOIN})}_j\}_{j\in R}$ to all $E_i\in R$.
+\For{each enclave $E_i\in R$ \textbf{in parallel}}
+  \State For each $\mathsf{RA}^{(\mathrm{JOIN})}_j$: run \textsf{RA.Verify}; assert same $\mathsf{sid}$ and that the \emph{set} of participants satisfies $\mathsf{policy}$; abort on failure.
+  \State Participate (over RA--TLS) in the in\mbox{-}enclave \emph{threshold DKG} coordinated by $C$ to derive local share $sk_i$ and common group $pk$; \textbf{never} export $sk_i$.
+  \State $\mathsf{RA}^{(\mathrm{DKG})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid}_i,pk)\big)$; send to $C$.
+\EndFor
+\State $C$ verifies all $\mathsf{RA}^{(\mathrm{DKG})}_i$ and that they bind to the same $(\mathsf{sid},pk)$; abort otherwise.
+\State \textbf{return} $pk$ (to the application/coordinator).
 \end{algorithmic}
 \end{small}
 \end{algorithm}
 
 \subsection{Single-signing phase}
-\begin{enumerate}[leftmargin=*,itemsep=0.25em]
-  \item \textbf{Commit.} $C$ (over the RA–bound channel) broadcasts $(m^{\star},\mathsf{sid})$ for the \emph{existing} session $\mathsf{sid}$.
-  \item \textbf{Latch.} Each $E_i$ checks that the received $\mathsf{sid}$ matches its local session, that it is not already latched, and then binds $(m^{\star},\mathsf{sid})$ to its local one-shot latch. Further signing under the same $\mathsf{sid}$ is refused.
-  \item \textbf{Sign.} Enclaves execute threshold signing (e.g., \FROST{}) on $m^{\star}$ over RA-bound channels, producing partial signatures $\sigma_i$; $C$ aggregates to $\sigma^{\star}$.
-\end{enumerate}
+\emph{Algorithm~\ref{alg:sign} commits the designated message, latches it one-shot in each enclave, and performs threshold signing with $C$ aggregating.}
 
 \begin{algorithm}[!htbp]
 \caption{\prot{}: \emph{SingleSign} on designated message $m^{\star}$}
@@ -283,10 +273,10 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 \begin{small}
 \begin{algorithmic}[1]
 \State $C$ broadcasts $(m^{\star},\mathsf{sid})$ over the RA--TLS channel (using the already-established $\mathsf{sid}$).
-\For{each enclave $E_i$}
+\For{each enclave $E_i$ \textbf{in parallel}}
   \State Check $\mathsf{sid}$ equality with local session; abort if mismatched or already latched.
-  \State $\textsf{Latch}(\mathsf{sid},m^{\star})$ to bind the one-shot target.
-  \State Run \FROST{} partial signing on $m^{\star}$ to obtain $\sigma_i$; send $\sigma_i$ to $C$.
+  \State $\textsf{Latch}(\mathsf{sid},m^{\star})$ to bind the one-shot target (further signing under the same $\mathsf{sid}$ is refused).
+  \State Run partial signing on $m^{\star}$ to obtain $\sigma_i$; send $\sigma_i$ to $C$ over RA--TLS.
 \EndFor
 \State $C$ aggregates $\{\sigma_i\}$ into $\sigma^{\star}$; \textbf{proceed to \emph{DeleteAndPublish}} (Alg.~\ref{alg:delete-publish}).
 \end{algorithmic}
@@ -294,26 +284,26 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 \end{algorithm}
 
 \subsection{Certified deletion and publication}
-\begin{enumerate}[leftmargin=*,itemsep=0.25em]
-  \item \textbf{Delete \& attest.} Each enclave $E_i$ executes $\textsf{Del}()$, then generates
-        $\mathsf{RA}^{(\mathrm{DEL})}_i$ with $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
-        and sends it to $C$ over the RA–bound channel.
-  \item \textbf{Publish.} $C$ selects a subset $S$ with $|S|\ge k$ satisfying the policy’s diversity constraints and publishes
-        the certificate $\mathsf{AOSC}_\sid$ containing $\sigma^{\star}$ and the set $\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S}$.
-\end{enumerate}
+\emph{Algorithm~\ref{alg:delete-publish} has $C$ request deletion attestations (including $\sigma^{\star}$) and enclaves attest deletion; $C$ then publishes the attested one-shot certificate $\mathsf{AOSC}_\sid$.}
 
 \begin{algorithm}[!htbp]
-\caption{\prot{}: \emph{DeleteAndPublish} (run by $C$ after \emph{SingleSign})}
+\caption{\prot{}: \emph{DeleteAndPublish}}
 \label{alg:delete-publish}
 \begin{small}
 \begin{algorithmic}[1]
-\State Initialize $S \gets \emptyset$
-\For{each enclave $E_i$}
-  \State receive $\mathsf{RA}^{(\mathrm{DEL})}_i$ with aux $(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
-  \State add $(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$ to $S$
+\State \textbf{$C$} broadcasts over RA--TLS a deletion request containing $(\sid,pk,m^{\star},\sigma^{\star})$ to the session roster.
+\For{each enclave $E_i$ \textbf{in parallel}}
+  \State Receive $(\sid,pk,m^{\star},\sigma^{\star})$ over RA--TLS; check $\sid$ matches local session (abort on mismatch).
+  \State \textsf{Del}(): zeroize local key material and nonces.
+  \State $\mathsf{RA}^{(\mathrm{DEL})}_i \gets \textsf{RA.GenQuote}\big((\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})\big)$.
+  \State Send $\mathsf{RA}^{(\mathrm{DEL})}_i$ to \textbf{$C$} over RA--TLS.
 \EndFor
-\State choose a policy-compliant subset $S' \subseteq S$ with $|S'|\ge k$
-\State \textbf{publish} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},S')$
+\State \textbf{$C$} initializes $S \gets \emptyset$.
+\For{each enclave $E_i$}
+  \State \textbf{$C$} receives $\mathsf{RA}^{(\mathrm{DEL})}_i$; add $(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$ to $S$.
+\EndFor
+\State \textbf{$C$} chooses a policy-compliant subset $S' \subseteq S$ with $|S'|\ge k$.
+\State \textbf{$C$ publishes} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},\mathsf{nonce},pk,m^{\star},\sigma^{\star},S')$.
 \end{algorithmic}
 \end{small}
 \end{algorithm}
@@ -321,35 +311,23 @@ strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relati
 \paragraph{Output artifact (published by $C$).}
 We define the \emph{attested one-shot certificate} for session $\sid$ as
 \[
-\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'}\big),
+\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ \mathsf{nonce},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'}\big),
 \]
 where $S'$ is an index set with $|S'|\ge k$ satisfying the policy’s diversity constraints, and each
 $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
 
 \subsection{VerifyAOSC}
-\begin{enumerate}[leftmargin=*,itemsep=0.25em]
-  \item \textbf{Parse.} Read $\mathsf{AOSC}_\sid=(\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},S'$.
-        Recompute $\mathsf{policy\_hash}$ from the verifier’s configured policy; if $\mathsf{nonce}$ is present, recompute $\sid$ and check equality.
-        Check $|S|\ge k$ and policy diversity constraints on $\{\mathsf{eid}_i\}$.
-  \item \textbf{Signature.} Verify $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$.
-  \item \textbf{Attestations.} For each $(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\in S$:
-        
-        (a) run $\textsf{RA.Verify}(\mathsf{RA}^{(\mathrm{DEL})}_i;\textsf{allow\_meas},\textsf{roots})$;
-        
-        (b) parse $\mathsf{aux}$ and assert $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$;
-        
-        (c) ensure freshness via $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})}_i,\sid)=1$ with strict counter monotonicity for $(\sid,\mathsf{eid}_i)$.
-  \item \textbf{Decision.} Accept iff all checks pass.
-\end{enumerate}
+\emph{Algorithm~\ref{alg:verify-aosc} validates the published certificate against policy binding, signature correctness, and per-enclave RA freshness.}
+
 
 \begin{algorithm}[!htbp]
 \caption{\prot{}: \emph{VerifyAOSC}$(\mathsf{AOSC}_\sid)$}
 \label{alg:verify-aosc}
 \begin{small}
 \begin{algorithmic}[1]
-\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'})$
+\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},\mathsf{nonce},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'})$
 \State \textbf{Params:} trusted RA roots, allowed measurement set $\textsf{allow\_meas}$, policy (to rederive $\mathsf{policy\_hash}$ and diversity), freshness predicate \textsf{Fresh}
-\State \textbf{(Optional)} If $\mathsf{nonce}$ is included, recompute $\sid \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce})$ and check equality
+\State Recompute $\sid' \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce})$ and assert $\sid'=\sid$
 \State Assert $\mathsf{policy\_hash}$ matches the verifier’s configured policy; check $|S'|\ge k$ and diversity constraints on $\{\mathsf{eid}_i\}_{i\in S'}$
 \State Check $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$
 \For{each $i\in S'$}
@@ -362,17 +340,7 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
 \end{small}
 \end{algorithm}
 
-\subsection{Exact-one property}
-The one-shot guarantee is enforced by (i) an in-enclave latch that irrevocably binds $(\sid,m^{\star})$ before any nonce is sampled and refuses further signing under the same $\sid$, and (ii) the freshness oracle’s \emph{uniqueness and ordering} constraints. In particular, each enclave can register at most one $\mathrm{DEL}$ entry for a given $(\sid,\mathsf{eid})$, and every $\mathrm{DEL}$ must have a prior $\mathrm{DKG}$ entry.
-
-\noindent\textbf{Lemma (Exact-one, acceptance level).}
-Let $k$ be the minimum number of deletion attestations required by policy. Under RA unforgeability and an append-only oracle that enforces uniqueness and $\mathrm{DKG}\!\prec\!\mathrm{DEL}$ per $(\sid,\mathsf{eid})$, it is infeasible for any PPT adversary to produce two distinct accepting certificates
-$\mathsf{AOSC}_\sid$ and $\mathsf{AOSC}'_\sid$ for the same $\sid$ (equivalently, the same $pk$), with $\sigma^{\star}\neq\sigma^{\star'}$.
-
-\emph{Proof sketch.} Any accepting certificate must contain at least $k$ valid $\mathrm{DEL}$ quotes whose reportdata all bind the same tuple $(\sid,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$. Because the oracle admits at most one $\mathrm{DEL}$ per $(\sid,\mathsf{eid}_i)$, the same enclave cannot back a second, different $\sigma^{\star'}$ without either (a) forging an RA quote or (b) violating oracle uniqueness/order. Thus a second accepting certificate would require a disjoint set of at least $k$ enclaves emitting fresh $\mathrm{DEL}$ quotes for $\sigma^{\star'}$, which contradicts the honest-minority assumption (for $t\!=\!n$, or more generally once at least one enclave in the accepted set is honest and latched/deleted). \qed
-
-\paragraph{Scope.}
-The exact-one property is per-session: new sessions use new $\sid$ values and fresh DKGs. No monotonic counters or trusted time are assumed.
+\noindent\emph{Note.} The above acceptance rule enforces the exact-one semantics; see Theorem~\ref{thm:one-shot}.
 
 \section{Security}\label{sec:security}
 We sketch the core arguments; full proofs follow the standard game-hopping template with RA-oracle idealization.
