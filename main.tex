@@ -365,14 +365,11 @@ Verifiers enforce an abstract replay predicate $\textsf{Fresh}$ rather than trus
 \section{Applications}\label{sec:apps}
 
 \subsection{\prot{} One-shot signatures (OSS)}\label{sec:app-oss}
-We obtain a public-key one-shot signature scheme by instantiating:
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
-  \item \textbf{KeyGen:} run \emph{SetupAndDKG} to produce $(pk)$ for a fresh $\sid$.
-  \item \textbf{Sign:} run \emph{SingleSign} on the target message $m^{\star}$ to obtain $\sigma^{\star}$.
-  \item \textbf{Delete \& certify:} run \emph{DeleteAndPublish} to publish $\mathsf{AOSC}_\sid$ with at least $k$ RA$^{(\mathrm{DEL})}$.
-  \item \textbf{Verify:} run \emph{VerifyAOSC}$(\mathsf{AOSC}_\sid)$ and check $\mathsf{Verify}(pk,m^{\star},\sigma^{\star}){=}1$.
+  \item \textbf{KeyGen (\(\mathsf{Gen}(\mathsf{crs})\!\to\!(pk,sk)\)).} Instantiate a fresh \(\sid\); run \emph{SetupAndDKG} (Alg.~\ref{alg:setup}) to obtain \(pk\). The secret key \(sk\) is an opaque handle to the distributed in-enclave state for \(\sid\) (shares never leave TEEs).
+  \item \textbf{Sign (\(\mathsf{Sign}(sk,m)\!\to\!\sigma\)).} Run \emph{SingleSign} (Alg.~\ref{alg:sign}) on \(m\) to obtain \(\sigma^{\star}\), then \emph{DeleteAndPublish} (Alg.~\ref{alg:delete-publish}) to get \(\mathsf{AOSC}_{\sid}\). Output \(\sigma := (\sigma^{\star}, \mathsf{AOSC}_{\sid})\).
+  \item \textbf{Verify (\(\mathsf{Ver}(\mathsf{crs},pk,m,\sigma)\!\to\! b\)).} Parse \(\sigma=(\sigma^{\star},\mathsf{AOSC}_{\sid})\); accept (\(b{=}1\)) iff \(\mathsf{Verify}(pk,m,\sigma^{\star})=1\) and \emph{VerifyAOSC} (Alg.~\ref{alg:verify-aosc}) accepts \(\mathsf{AOSC}_{\sid}\).
 \end{itemize}
-\emph{Remarks.} The one-shot property follows from the latch plus the acceptance rule (Section~\ref{alg:verify-aosc}) under \textsf{Fresh}. This gives a deployable OSS in the Amos–style sense without quantum hardware; $pk$ is a standard Schnorr key, so existing tooling verifies $\sigma^{\star}$ unchanged.
 
 \subsection{QuanTEEum money}
 Following the OSS-based quantum money with \emph{classical} communication paradigm ~\cite{shmueli2025one}, a coin is a chain of one-shot signatures over successive recipients’ serials/keys: the mint signs Alice’s serial; on transfer, Alice one-shot signs Bob’s, and so on, so the previous signing capability self-destructs after each hop. \prot{} instantiates this with TEEs: each minting/transfer runs a fresh session to produce $(pk,\sigma^{\star},\mathsf{AOSC}_\sid)$ where $m^{\star}$ encodes the coin serial (and, if desired, the next recipient), and RA$^{(\mathrm{DEL})}$ certifies in-enclave key erasure. The “one-shot” effect we rely on is precisely that the signing key can be used only once (collapses thereafter).
