@@ -64,26 +64,38 @@ Exact-once acceptance reduces to the infeasibility of recovering a deleted thres
 
 \section{Background and Model}
 \subsection{One-shot signatures in brief}
-An \oss{} scheme exposes $(\mathsf{Setup},\mathsf{KeyGen},\mathsf{SignOnce},\mathsf{Verify})$ with the property that for any keypair, at most one signature on at most one message is computationally feasible. Security is captured by a game where the adversary, after arbitrary queries \emph{except} a second signing, fails to produce two distinct valid signatures or one valid signature after certified deletion.
+A one-shot signature scheme \cite{amos2020one} is a tuple $(\mathsf{Gen},\mathsf{Sign},\mathsf{Ver})$ with syntax:
+\[
+\mathsf{Gen}(\mathsf{crs}) \rightarrow (pk,sk),\qquad
+\mathsf{Sign}(sk,m) \rightarrow \sigma,\qquad
+\mathsf{Ver}(\mathsf{crs},pk,m,\sigma) \rightarrow b \in \{0,1\}.
+\]
+\emph{Correctness:} if $(pk,sk) \leftarrow \mathsf{Gen}(\mathsf{crs})$ and $\sigma \leftarrow \mathsf{Sign}(sk,m)$ then $\mathsf{Ver}(\mathsf{crs},pk,m,\sigma)=1$. 
+
+\smallskip
+\noindent\emph{One-shot unforgeability:} no PPT adversary, given $(\mathsf{crs},pk)$ and oracle access to $\mathsf{Sign}(sk,\cdot)$, can output two distinct valid pairs $(m_1,\sigma_1)\neq(m_2,\sigma_2)$ with $\mathsf{Ver}(\mathsf{crs},pk,m_1,\sigma_1)=\mathsf{Ver}(\mathsf{crs},pk,m_2,\sigma_2)=1$ except with negligible probability.
+
+\smallskip
+\noindent\emph{Remarks.} In our instantiation, the public parameters $\mathsf{crs}$ are absorbed into the suite/policy (Section~\ref{sec:protocol}); the secret key is classical but confined to TEEs. 
 
 \subsection{Threshold signatures}
-We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure DKG (e.g., FROST ~\cite{komlo2020frost}). Parties hold additive shares $\{sk_i\}$ with public key $pk$, and interactive signing produces $\sigma$ on message $m$. Unforgeability holds if fewer than $t$ shares leak and nonces are not reused.
+We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure DKG (e.g., FROST~\cite{komlo2020frost}), where $n$ is the number of participating enclaves and $t$ is the signing threshold. Each party $P_i$ holds an additive secret share $sk_i$; together they define the group public key $pk$, and interactive signing with fresh per-round nonces from any set of $t$ parties produces signature $\sigma$ on message $m$. Security assumes a correct DKG, fewer than $t$ shares exposed, and no nonce reuse or bias. We primarily instantiate $t{=}n$; the case $t{<}n$ is discussed in \S\ref{sec:discussion}.
 
 \subsection{TEE trust and remote attestation}
 Each party $P_i$ hosts an enclave $E_i$ implementing \prot{}. We assume:
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
   \item \textbf{Code identity}: attestation binds a code measurement and the \emph{auxiliary reportdata} to outputs; verifier policy is committed via $\mathsf{policy\_hash}$ in $\mathsf{sid}$.
   \item \textbf{Sealed state semantics}: used only pre-signing to persist the DKG result across a crash.
-  \item \textbf{Freshness/anti-replay}: a monotonic epoch is available (hardware counter or external append-only anchor) and is bound into attestations as a counter $\mathsf{ctr}\in\{0,1,2\}$ corresponding to JOIN, DKG, and DEL.
+  \item \textbf{Freshness/anti-replay}: a monotonic \emph{counter} is available (hardware counter or external append-only anchor) and is bound into attestations as $\mathsf{ctr}\in\{0,1,2\}$ corresponding to JOIN, DKG, and DEL.
   \item \textbf{Deletion API}: an enclave can make shares unrecoverable (\emph{zeroization}) and prove the transition with an attestation carrying auxiliary data.
 \end{itemize}
 We \emph{do not} assume perfect side-channel resistance or that all rollback vectors are impossible; instead we bind acceptance to the \emph{freshness predicate} and to a one-shot latch.
 
 \paragraph{Assumption (Replay protection \textsf{Fresh}).}
-There exists a predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})\!\in\!\{0,1\}$ enforcing per-$(\mathsf{sid},\mathsf{eid})$ \emph{uniqueness} and \emph{strict counter monotonicity} $0\!\rightarrow\!1\!\rightarrow\!2$. The verifier accepts at most one quote for each $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$ and any $\mathsf{ctr}{=}2$ (DEL) must be fresh relative to previously accepted $\mathsf{ctr}\in\{0,1\}$. No trusted time is required; realizations include enclave-backed monotonic storage or an external append-only anchor.
+There exists a predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})\!\in\!\{0,1\}$ enforcing per-$(\mathsf{sid},\mathsf{eid})$ \emph{uniqueness} and \emph{strict counter monotonicity} $0\!\rightarrow\!1\!\rightarrow\!2$. The verifier accepts at most one quote for each $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$, and any $\mathsf{ctr}{=}2$ (DEL) must be fresh relative to previously accepted $\mathsf{ctr}\in\{0,1\}$. No trusted time is required; realizations include enclave-backed monotonic storage or an external append-only anchor.
 
 \subsection{Adversary and network}
-The network is asynchronous with eventual delivery. The adversary may statically corrupt up to $f$ enclaves and their hosts and is rushing. We target $t=n$ for strongest one-shot semantics; extensions to $t<n$ are discussed in \S\ref{sec:discussion}.
+The network is asynchronous with eventual delivery; the adversary may delay, drop, reorder, and duplicate messages. Channels are authenticated and confidential (RA--TLS). The adversary is rushing and may statically corrupt up to $f$ enclaves and their hosts. We target $t=n$ for strongest one-shot semantics; extensions to $t<n$ are discussed in \S\ref{sec:discussion}.
 
 \section{\prot{} Protocol}\label{sec:protocol}
 
