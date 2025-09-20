@@ -347,12 +347,12 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
 \label{alg:verify-aosc}
 \begin{small}
 \begin{algorithmic}[1]
-\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S})$
+\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'})$
 \State \textbf{Params:} trusted RA roots, allowed measurement set $\textsf{allow\_meas}$, policy (to rederive $\mathsf{policy\_hash}$ and diversity), freshness predicate \textsf{Fresh}
 \State \textbf{(Optional)} If $\mathsf{nonce}$ is included, recompute $\sid \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce})$ and check equality
-\State Assert $\mathsf{policy\_hash}$ matches the verifier’s configured policy; check $|S|\ge k$ and diversity constraints on $\{\mathsf{eid}_i\}_{i\in S}$
+\State Assert $\mathsf{policy\_hash}$ matches the verifier’s configured policy; check $|S'|\ge k$ and diversity constraints on $\{\mathsf{eid}_i\}_{i\in S'}$
 \State Check $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$
-\For{each $i\in S$}
+\For{each $i\in S'$}
   \State $\textbf{(a)}$ \textsf{RA.Verify}$(\mathsf{RA}^{(\mathrm{DEL})}_i;\ \textsf{allow\_meas},\ \text{RA roots})=1$
   \State $\textbf{(b)}$ Parse $\mathsf{aux}$ from $\mathsf{RA}^{(\mathrm{DEL})}_i$ and assert $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
   \State $\textbf{(c)}$ Ensure freshness: $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})}_i,\sid)=1$ and strictly increasing counter vs.\ any prior accepted quotes for $(\sid,\mathsf{eid}_i)$
