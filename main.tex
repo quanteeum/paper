@@ -161,7 +161,7 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
 
 \paragraph{Roles.}
 Parties $\{P_1,\dots,P_n\}$ run enclaves $\{E_1,\dots,E_n\}$.
-A (rotating) coordinator $C$ orchestrates rounds but learns no secrets.
+A (rotating) coordinator, assumed to be honest and available for protocol liveness, $C$ orchestrates rounds but learns no secrets.
 All protocol traffic (JOIN, DKG, Commit, Sign, Delete) is carried over
 \emph{attested secure channels} (e.g., RA--TLS) whose channel binding includes an
 ephemeral enclave public key $\mathsf{eid}$ attested by the enclave.
