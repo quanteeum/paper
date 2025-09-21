@@ -38,7 +38,7 @@
 \begin{abstract}
 One-shot signatures (OSS) have emerged as a versatile abstraction underpinning various blockchain-facing applications. Existing OSS constructions rely on quantum hardware that will not be widely available soon. Naïve emulations using a single trusted execution environment (TEE) inherit brittle unclonability requirements and concentrate integrity risk in one enclave, while certified deletion on a single device is notoriously hard. 
 
-We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive}, as independent deletion attestations strictly raise the minimum cost\mbox{-}of\mbox{-}attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to OSS and Quantum money, and discuss liveness, freshness, and rollback subtleties. 
+We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive} across heterogeneous TEEs, as independent deletion attestations strictly raise the minimum cost\mbox{-}of\mbox{-}attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to OSS and Quantum money, and discuss liveness, freshness, and rollback subtleties. 
 \end{abstract}
 
 \section{Introduction}
@@ -74,7 +74,7 @@ A one-shot signature scheme \cite{amos2020one} is a tuple $(\mathsf{Gen},\mathsf
 \noindent\emph{One-shot unforgeability:} no probabilistic polynomial-time (PPT) adversary, given $(\mathsf{crs},pk)$ and oracle access to $\mathsf{Sign}(sk,\cdot)$, can output two distinct valid pairs $(m_1,\sigma_1)\neq(m_2,\sigma_2)$ with $\mathsf{Ver}(\mathsf{crs},pk,m_1,\sigma_1)=\mathsf{Ver}(\mathsf{crs},pk,m_2,\sigma_2)=1$ except with negligible probability.
 
 \subsection{Threshold signatures}
-We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure, coordinator-orchestrated DKG (e.g., FROST~\cite{komlo2020frost}), where $n$ is the number of participating enclaves and $t$ is the signing threshold. A (possibly untrusted) coordinator $C$ schedules rounds and relays messages but learns no secret material; all DKG/signing traffic is carried over attested channels (RA--TLS), and secret shares $sk_i$ never leave enclaves. Each party $P_i$ holds an additive share $sk_i$; together they define the group public key $pk$, and interactive signing with fresh per-round nonces from any set of $t$ parties produces signature $\sigma$ on message $m$. Security assumes a correct DKG whose transcripts reveal nothing beyond $pk$, fewer than $t$ shares exposed, and no nonce reuse or bias. We primarily instantiate $t{=}n$; the case $t{<}n$ is discussed in \S\ref{sec:discussion}.
+We assume a Schnorr-style $t$-of-$n$ threshold signature with a secure, coordinator-orchestrated DKG (e.g., FROST~\cite{komlo2020frost}), where $n$ is the number of participating enclaves and $t$ is the signing threshold. A coordinator $C$ schedules rounds and relays messages but learns no secret material; all DKG/signing traffic is carried over attested channels (RA--TLS), and secret shares $sk_i$ never leave enclaves. Each party $P_i$ holds an additive share $sk_i$; together they define the group public key $pk$, and interactive signing with fresh per-round nonces from any set of $t$ parties produces signature $\sigma$ on message $m$. Security assumes a correct DKG whose transcripts reveal nothing beyond $pk$, fewer than $t$ shares exposed, and no nonce reuse or bias. We primarily instantiate $t{=}n$; the case $t{<}n$ is discussed in \S\ref{sec:discussion}.
 
 \subsection{TEE trust and remote attestation}
 Each party $P_i$ hosts an enclave $E_i$ implementing \prot{}. We assume:
@@ -167,11 +167,10 @@ All protocol traffic (JOIN, DKG, Commit, Sign, Delete) is carried over
 ephemeral enclave public key $\mathsf{eid}$ attested by the enclave.
 
 \paragraph{Session binding.}
-We use DKG-first. A session identifier $\mathsf{sid}$ is derived
+We use DKG-first. A session identifier $\mathsf{sid}$ is derived and embedded in all protocol messages and in the attestation \emph{reportdata}
 \[
   \mathsf{sid} \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce}),
 \]
-and is embedded in all protocol messages and in the attestation \emph{reportdata}.
 
 \paragraph{Parameters.}
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
@@ -240,12 +239,11 @@ and is embedded in all protocol messages and in the attestation \emph{reportdata
 
 \subsection{Certified deletion and publication}
 \emph{Algorithm~\ref{alg:delete-publish} has $C$ request deletion attestations (including $\sigma^{\star}$) and enclaves attest deletion; $C$ then publishes the attested one-shot certificate $\mathsf{AOSC}_\sid$.}
-
+\smallskip
 \[
-\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ \mathsf{nonce},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'}\big),
+\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ \mathsf{nonce},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DKG})}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'}\big),
 \]
-where $S'$ is an index set with $|S'|\ge k$ satisfying the policy’s diversity constraints, and each
-$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
+where $S'$ is an index set with $|S'|\ge k$ satisfying the policy’s diversity constraints.
 
 \begin{algorithm}[H]
 \caption{\prot{}: \emph{DeleteAndPublish}}
@@ -264,7 +262,7 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
   \State \textbf{$C$} receives $\mathsf{RA}^{(\mathrm{DEL})}_i$; add $(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)$ to $S$.
 \EndFor
 \State \textbf{$C$} chooses a policy-compliant subset $S' \subseteq S$ with $|S'|\ge k$.
-\State \textbf{$C$ publishes} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},\mathsf{nonce},pk,m^{\star},\sigma^{\star},S')$.
+\State \textbf{$C$ publishes} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},\mathsf{nonce},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DKG})}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'})$.
 \end{algorithmic}
 \end{small}
 \end{algorithm}
@@ -279,15 +277,13 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
 \label{alg:verify-aosc}
 \begin{small}
 \begin{algorithmic}[1]
-\State \textbf{Input:} $\mathsf{AOSC}_\sid = (\sid,\mathsf{suite},\mathsf{policy\_hash},\mathsf{nonce},pk,m^{\star},\sigma^{\star},\{(\mathsf{eid}_i,\mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'})$
-\State \textbf{Params:} trusted RA roots, allowed measurement set $\textsf{allow\_meas}$, policy (to rederive $\mathsf{policy\_hash}$ and diversity), freshness predicate \textsf{Fresh}
 \State Recompute $\sid' \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce})$ and assert $\sid'=\sid$
 \State Assert $\mathsf{policy\_hash}$ matches the verifier’s configured policy; check $|S'|\ge k$ and diversity constraints on $\{\mathsf{eid}_i\}_{i\in S'}$
 \State Check $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$
 \For{each $i\in S'$}
-  \State $\textbf{(a)}$ \textsf{RA.Verify}$(\mathsf{RA}^{(\mathrm{DEL})}_i;\ \textsf{allow\_meas},\ \text{RA roots})=1$
-  \State $\textbf{(b)}$ Parse $\mathsf{aux}$ from $\mathsf{RA}^{(\mathrm{DEL})}_i$ and assert $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$
-  \State $\textbf{(c)}$ Ensure freshness: $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})}_i,\sid)=1$ and strictly increasing counter vs.\ any prior accepted quotes for $(\sid,\mathsf{eid}_i)$
+  \State \textbf{(a)} \textsf{RA.Verify}$(\mathsf{RA}^{(\mathrm{DKG})}_i;\ \textsf{allow\_meas},\ \text{RA roots})=1$; parse $\mathsf{aux}$ and assert $(\sid,\mathsf{ctr}{=}1,\mathsf{eid}_i,pk)$; ensure $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DKG})}_i,\sid)=1$.
+  \State \textbf{(b)} \textsf{RA.Verify}$(\mathsf{RA}^{(\mathrm{DEL})}_i;\ \textsf{allow\_meas},\ \text{RA roots})=1$; parse $\mathsf{aux}$ and assert $(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$; ensure $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})}_i,\sid)=1$.
+  \State \textbf{(c)} Assert that both quotes share the same $(\sid,\mathsf{eid}_i,pk)$ and the counters respect $1\!\rightarrow\!2$.
 \EndFor
 \State \textbf{Accept} iff all checks pass
 \end{algorithmic}
@@ -302,18 +298,18 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
 We sketch the core arguments; full proofs follow standard game-hopping with an idealized \textsf{Fresh} predicate.
 \paragraph{Safety: one-shot unforgeability.}
 \begin{theorem}[One-shot from threshold-in-TEE]\label{thm:one-shot}
-Assume (i) the underlying threshold signature is unforgeable, (ii) at least one enclave is honest and transitions to post-delete state after producing $\sigma^{\star}$, (iii) \textsf{Fresh} prevents replay/rollback of pre-delete states, and (iv) vendor RA is unforgeable under the stated trust roots. Then producing two distinct accepting artifacts for the same $pk$ in session $\mathsf{sid}$—i.e., two certificates that both pass \textsf{VerifyAOSC}—with $\sigma_1 \neq \sigma_2$ is infeasible for PPT adversaries.
+Assume (i) the underlying threshold signature is unforgeable, (ii) at least one enclave is honest and transitions to post-delete state after producing $\sigma^{\star}$, (iii) \textsf{Fresh} prevents replay/rollback of pre-delete states, and (iv) vendor RA is unforgeable under the stated trust roots. Then producing two distinct accepting artifacts for the same $pk$ in session $\mathsf{sid}$—i.e., two AOSCs that pass \textsf{VerifyAOSC}—with $\sigma_1 \neq \sigma_2$ is infeasible for PPT adversaries.
 \end{theorem}
 
 \begin{proof}[Proof sketch]
-Suppose two accepting artifacts exist. If either signature is produced without $t$ valid shares, we break threshold unforgeability. Otherwise, at least $t$ shares were live at each signing. Any accepting certificate contains at least $k$ valid deletion attestations, and under the honest-minority assumption at least one of those enclaves is honest and has deleted its share bound to $(\mathsf{sid},m^{\star},\sigma^{\star})$. The only routes to a second accepted signature are: (A) forge RA to claim deletion without deleting (contradicts RA unforgeability); (B) roll back an honest enclave past delete (contradicts \textsf{Fresh}); or (C) compromise enough enclaves (meeting policy/diversity constraints) to reassemble $t$ fresh shares (violates honest-minority).
+Suppose two accepting artifacts exist. If either signature is produced without $t$ valid shares, we break threshold unforgeability. Otherwise, at least $t$ shares were live at each signing. Any accepting certificate contains at least $k$ valid deletion attestations, and under the honest-minority assumption at least one of those enclaves is honest and has deleted its share bound to $(\mathsf{sid},m^{\star},\sigma^{\star})$. The only routes to a second accepted signature are: (A) forge RA to claim deletion without deleting (contradicts RA unforgeability); (B) roll back an honest enclave past delete (contradicts \textsf{Fresh}); or (C) compromise enough enclaves (meeting policy constraints) to reassemble $t$ fresh shares (violates honest-minority).
 \end{proof}
 
 \paragraph{Liveness.}
 With $t{=}n$ the protocol requires all enclaves to participate; a crashed or aborting enclave prevents progress. We adopt a bounded timeout: if signing fails, $C$ abandons $\sid$ and re-instantiates (fresh $\sid$ and DKG) with fresh enclaves. In deployments desiring partial progress, \prot{} supports $t<n$ with two caveats: (i) \emph{deletion} attestations must reach $k\!\ge\!t$; (ii) the exact-one property is now conditioned on at least one of the $k$ attesting enclaves being honest.
 
 \paragraph{Additive security via heterogeneity.}
-If attestations are independent across vendors/geographies/operators, the minimum cost\mbox{-}of\mbox{-}attack is approximately the sum of the $k$ cheapest per\mbox{-}enclave compromise costs (this approximation assumes independence and no bulk\mbox{-}attack economies; otherwise treat it as a lower bound). We recommend explicit \emph{diversity constraints} in policy (e.g., “at least two vendors and three physical operators”).
+If attestations are independent across vendors/geographies/operators, the minimum cost\mbox{-}of\mbox{-}attack is approximately the sum of the $k$ cheapest per\mbox{-}enclave compromise costs (this approximation assumes independence and no bulk\mbox{-}attack economies; otherwise treat it as a lower bound). We recommend explicit \emph{diversity constraints} in policy (e.g., “at least two vendors and three physical operators”). 
 
 \section{Applications}\label{sec:apps}
 
@@ -323,9 +319,10 @@ If attestations are independent across vendors/geographies/operators, the minimu
   \item \textbf{Sign (\(\mathsf{Sign}(sk,m)\!\to\!\sigma\)).} Run \emph{SingleSign} (Alg.~\ref{alg:sign}) on \(m\) to obtain \(\sigma^{\star}\), then \emph{DeleteAndPublish} (Alg.~\ref{alg:delete-publish}) to get \(\mathsf{AOSC}_{\sid}\). Output \(\sigma := (\sigma^{\star}, \mathsf{AOSC}_{\sid})\).
   \item \textbf{Verify (\(\mathsf{Ver}(\mathsf{crs},pk,m,\sigma)\!\to\! b\)).} Parse \(\sigma=(\sigma^{\star},\mathsf{AOSC}_{\sid})\); accept (\(b{=}1\)) iff \(\mathsf{Verify}(pk,m,\sigma^{\star})=1\) and \emph{VerifyAOSC} (Alg.~\ref{alg:verify-aosc}) accepts \(\mathsf{AOSC}_{\sid}\).
 \end{itemize}
+\emph{Note (certificate canonicality).} Our one-shot guarantee concerns signatures, not certificate canonicality. To prevent multiple valid artifacts for the same $\sigma^{\star}$ from enabling duplicate claims, deployments must enforce a canonicality rule at the application/contract layer.
 
 \subsection{QuanTEEum money}
-Following the OSS-based quantum money with \emph{classical} communication paradigm ~\cite{shmueli2025one}, a coin is a chain of one-shot signatures over successive recipients’ serials/keys: the mint signs Alice’s serial; on transfer, Alice one-shot signs Bob’s, and so on, so the previous signing capability self-destructs after each hop. \prot{} instantiates this with TEEs: each minting/transfer runs a fresh session to produce $(pk,\sigma^{\star},\mathsf{AOSC}_\sid)$ where $m^{\star}$ encodes the coin serial (and, if desired, the next recipient), and RA$^{(\mathrm{DEL})}$ certifies in-enclave key erasure. The “one-shot” effect we rely on is precisely that the signing key can be used only once (collapses thereafter).
+Following the OSS-based quantum money with \emph{classical} communication paradigm ~\cite{shmueli2025one}, a coin is a chain of one-shot signatures over successive recipients’ serials/keys: the mint signs Alice’s serial; on transfer, Alice one-shot signs Bob’s, and so on, so the previous signing capability self-destructs after each hop. \prot{} instantiates this with TEEs: each minting/transfer runs a fresh session to produce $(pk,\sigma^{\star},\mathsf{AOSC}_\sid)$ where $m^{\star}$ encodes the coin serial (and, if desired, the next recipient), and RA$^{(\mathrm{DEL})}$ certifies in-enclave key erasure. The “one-shot” effect we rely on is precisely that the signing key can be used only once.
 
 % \subsection{QuanTEEum ceremony-free CRS (Groth16)}
 % We specialize \prot{} to a \emph{distributed certified-deletion} workflow—no DKG, no signing—since a ceremony’s goal is only to ensure toxic waste is unrecoverable. For a circuit with identifier $\mathsf{cid}=H(\text{QAP})$, enclaves jointly compute the Groth16 CRS inside TEEs (deriving any trapdoor material ephemerally), publish the CRS, then zeroize and attest deletion. Concretely, we reuse JOIN (policy/roster, RA–bound channels), compute the CRS in-enclave, and have each enclave emit a deletion quote binding $(\sid,\mathsf{cid},H(\mathsf{CRS}))$. Verifiers accept a CRS iff at least $k$ deletion attestations validate and are fresh. This is not a plain-model proof of “no toxic waste,” but yields an auditable, honest-minority and heterogeneous alternative to single-operator ceremonies for Groth16.
