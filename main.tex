@@ -94,7 +94,7 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
 
 \section{\prot{} Protocol}\label{sec:protocol}
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
 \begin{tikzpicture}[
   x=2.0cm,y=0.9cm,>=Stealth,
@@ -157,6 +157,8 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
 \label{fig:flow}
 \end{figure}
 
+\FloatBarrier
+
 \paragraph{Roles.}
 Parties $\{P_1,\dots,P_n\}$ run enclaves $\{E_1,\dots,E_n\}$.
 A (rotating) coordinator $C$ orchestrates rounds but learns no secrets.
@@ -205,7 +207,7 @@ $\textsf{Del}()$
 \subsection{Setup and DKG}
 \emph{Algorithm~\ref{alg:setup} performs policy-based roster selection, attested JOIN with peer vetting, runs the in\mbox{-}enclave threshold DKG coordinated by $C$, and binds the group key via RA$^{(\mathrm{DKG})}$.}
 
-\begin{algorithm}[!htbp]
+\begin{algorithm}[H]
 \caption{\prot{}: \emph{SetupAndDKG}}
 \label{alg:setup}
 \begin{small}
@@ -227,10 +229,12 @@ $\textsf{Del}()$
 \end{small}
 \end{algorithm}
 
+\FloatBarrier
+
 \subsection{Single-signing phase}
 \emph{Algorithm~\ref{alg:sign} commits the designated message, latches it one-shot in each enclave, and performs threshold signing with $C$ aggregating.}
 
-\begin{algorithm}[!htbp]
+\begin{algorithm}[H]
 \caption{\prot{}: \emph{SingleSign} on designated message $m^{\star}$}
 \label{alg:sign}
 \begin{small}
@@ -246,10 +250,12 @@ $\textsf{Del}()$
 \end{small}
 \end{algorithm}
 
+\FloatBarrier
+
 \subsection{Certified deletion and publication}
 \emph{Algorithm~\ref{alg:delete-publish} has $C$ request deletion attestations (including $\sigma^{\star}$) and enclaves attest deletion; $C$ then publishes the attested one-shot certificate $\mathsf{AOSC}_\sid$.}
 
-\begin{algorithm}[!htbp]
+\begin{algorithm}[H]
 \caption{\prot{}: \emph{DeleteAndPublish}}
 \label{alg:delete-publish}
 \begin{small}
@@ -278,12 +284,12 @@ We define the \emph{attested one-shot certificate} for session $\sid$ as
 \]
 where $S'$ is an index set with $|S'|\ge k$ satisfying the policy’s diversity constraints, and each
 $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
+\FloatBarrier
 
 \subsection{VerifyAOSC}
 \emph{Algorithm~\ref{alg:verify-aosc} validates the published certificate against policy binding, signature correctness, and per-enclave RA freshness.}
 
-
-\begin{algorithm}[!htbp]
+\begin{algorithm}[H]
 \caption{\prot{}: \emph{VerifyAOSC}$(\mathsf{AOSC}_\sid)$}
 \label{alg:verify-aosc}
 \begin{small}
@@ -302,6 +308,8 @@ $\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\maths
 \end{algorithmic}
 \end{small}
 \end{algorithm}
+
+\FloatBarrier
 
 \noindent\emph{Note.} The above acceptance rule enforces the exact-one semantics; see Theorem~\ref{thm:one-shot}.
 
