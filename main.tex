@@ -57,13 +57,13 @@ We present \prot{}, an honest-minority distributed protocol that realizes certif
 
 \section{Introduction}
 \paragraph{Motivation.}
-One-shot signatures (OSS) guarantee that a secret signing key can produce at most one valid signature; thereafter any further signing with that key is infeasible. Certified deletion complements OSS by providing verifiable deletion of the relevant secrets after use. Together, these primitives enable applications such as quantum money, perfect-finality blockchains, smart contracts without a blockchain, ordered and budgeted signatures, and ceremony-free Groth16 CRS. 
+One-shot signatures (OSS) guarantee that a secret signing key can produce at most one valid signature; thereafter any further signing with that key is infeasible. Certified deletion complements OSS by providing verifiable deletion of the relevant secrets after use. Together, these primitives enable applications such as quantum money \cite{shor2012quantum}, perfect-finality blockchains \cite{drake-progcrypto-oss}, smart contracts without a blockchain \cite{sattath2022quantum}, ordered and budgeted signatures, and ceremony-free Groth16 CRS \cite{groth2016size}. 
 Current TEE-based attempts at realizing OSS typically use a single enclave, making certified deletion both hard and brittle. The central tension is that \emph{unclonability} pushes toward keeping a single non-replicated secret, whereas \emph{robustness and defense-in-depth} call for replication across heterogeneous TEEs. While supply chain hardening and reproducible builds are crucial, defense-in-depth via \emph{heterogeneous} enclaves gives additive security.
 This motivates a design that achieves exact-once semantics while distributing trust across multiple enclaves.
 
 \paragraph{Our approach.}
 \prot{} lifts OSS to an \emph{honest-minority} setting by distributing the signing key across independent (heterogeneous) enclaves via a threshold DKG and binding the resulting (group) public key with per-enclave DKG attestations. The system produces exactly one threshold signature on the designated message and then aggregates per-enclave certified-deletion attestations bound to the same session. 
-Exact-once acceptance reduces to the infeasibility of recovering a deleted threshold share from \emph{at least one} honest enclave, plus freshness/anti-replay for attestations and standard threshold unforgeability. We adopt the \emph{relaxed OSS} notion: one-shotness today via TEE-backed certified deletion, with a clean upgrade path to quantum implementations.
+Exact-once acceptance reduces to the infeasibility of recovering a deleted threshold share from \emph{at least one} honest enclave, plus freshness/anti-replay for attestations and standard threshold unforgeability. We adopt the \emph{relaxed OSS} notion \cite{pkc-2024-34093}: one-shotness today via TEE-backed certified deletion, with a clean upgrade path to quantum implementations.
 
 \paragraph{Contributions.}
 \begin{itemize}[leftmargin=*,itemsep=0.25em,topsep=0.25em]
@@ -101,7 +101,7 @@ Each party $P_i$ hosts an enclave $E_i$ implementing \prot{}. We assume:
 We \emph{do not} assume perfect side-channel resistance or that all rollback vectors are impossible; instead we bind acceptance to the \emph{freshness predicate} and to a one-shot latch.
 
 \paragraph{Assumption (Replay protection \textsf{Fresh}).}
-There exists a predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})\!\in\!\{0,1\}$ enforcing per-$(\mathsf{sid},\mathsf{eid})$ \emph{uniqueness} and \emph{strict counter monotonicity} $0\!\rightarrow\!1\!\rightarrow\!2$. The verifier accepts at most one quote for each $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$, and any $\mathsf{ctr}{=}2$ (DEL) must be fresh relative to previously accepted $\mathsf{ctr}\in\{0,1\}$. No trusted time is required; realizations include enclave-backed monotonic storage or an external append-only anchor.
+There exists a predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})\!\in\!\{0,1\}$ enforcing per-$(\mathsf{sid},\mathsf{eid})$ \emph{uniqueness} and \emph{strict counter monotonicity} $0\!\rightarrow\!1\!\rightarrow\!2$. The verifier accepts at most one quote for each $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$, and any $\mathsf{ctr}{=}2$ (DEL) must be fresh relative to previously accepted $\mathsf{ctr}\in\{0,1\}$. No trusted time is required \cite{alder2023time}; realizations include enclave-backed monotonic storage or an external append-only anchor.
 
 \subsection{Adversary and network}
 The network is asynchronous with eventual delivery; the adversary may delay, drop, reorder, and duplicate messages. Channels are authenticated and confidential (RA--TLS). The adversary is rushing and may statically corrupt up to $f$ enclaves and their hosts. We target $t{=}n$ for strongest one-shot semantics; extensions to $t<n$ are discussed in \S\ref{sec:discussion}.
