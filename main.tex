@@ -18,6 +18,20 @@
 \color[rgb]{0.8,0.8,0.8} %grey
 \usepackage{hyperref}
 
+% % Float behavior tuning: keep floats with text; avoid float-only pages
+% \makeatletter
+% \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}  % space above/below floats
+% \setlength{\floatsep}{8pt plus 2pt minus 2pt}
+% \setlength{\intextsep}{8pt plus 2pt minus 2pt}
+% \renewcommand{\topfraction}{0.85}
+% \renewcommand{\bottomfraction}{0.70}
+% \renewcommand{\textfraction}{0.10}
+% \renewcommand{\floatpagefraction}{0.80}  % don't make a float-only page unless >=80% full
+% \setcounter{topnumber}{3}
+% \setcounter{bottomnumber}{2}
+% \setcounter{totalnumber}{5}
+% \makeatother
+
 \newcommand{\prot}{\textsf{QuanTEEum}}
 \newcommand{\sid}{\mathsf{sid}}
 \newcommand{\RA}{\mathsf{RA}}
@@ -38,7 +52,7 @@
 \begin{abstract}
 One-shot signatures (OSS) have emerged as a versatile abstraction underpinning various blockchain-facing applications. Existing OSS constructions rely on quantum hardware that will not be widely available soon. Naïve emulations using a single trusted execution environment (TEE) inherit brittle unclonability requirements and concentrate integrity risk in one enclave, while certified deletion on a single device is notoriously hard. 
 
-We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive}, as independent deletion attestations strictly raise the minimum cost\mbox{-}of\mbox{-}attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to QuanTEEum money and de-facto ceremony-free Groth16 CRS generation, and discuss liveness, freshness, and rollback subtleties. 
+We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive}, as independent deletion attestations strictly raise the minimum cost\mbox{-}of\mbox{-}attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to OSS and Quantum money, and discuss liveness, freshness, and rollback subtleties. 
 \end{abstract}
 
 \section{Introduction}
@@ -56,7 +70,7 @@ Exact-once acceptance reduces to the infeasibility of recovering a deleted thres
   \item A formalization of the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model with explicit context binding, parameterized by an abstract freshness predicate \textsf{Fresh}.
   \item \prot{}: a DKG-first threshold-in-TEE protocol that yields \emph{exactly one} threshold signature on a designated message and a set of per-enclave deletion attestations; security is additive across heterogeneous TEEs.
   \item A verifier-facing artifact and algorithm: the \emph{attested one-shot certificate} $\mathsf{AOSC}_\sid$ and \emph{VerifyAOSC}, enabling third-party validation under \textsf{Fresh}.
-  \item Application sketches for (i) QuanTEEum money (quantum-money–flavored tokens) and (ii) de-facto ceremony-free Groth16 CRS via certified deletion.
+  \item Application sketches for (i) QuanTEEum One-shot signature, and (ii) QuanTEEum money.
   \item A discussion of liveness under abort, anti-replay/rollback resistance, policy-driven heterogeneity as defense-in-depth, and on-chain instantiation/incentives.
 \end{itemize}
 
@@ -172,37 +186,23 @@ We use DKG-first. A session identifier $\mathsf{sid}$ is derived
   \mathsf{sid} \gets H(\mathsf{suite}\,\|\,\mathsf{policy\_hash}\,\|\,\mathsf{nonce}),
 \]
 and is embedded in all protocol messages and in the attestation \emph{reportdata}.
-Here $\mathsf{nonce}$ is a fresh 128-bit value chosen by $C$ at JOIN.
-The designated message $m^{\star}$ is \emph{frozen later} by a Commit step
-(after DKG and before signing) and appears in the deletion attestation.
 
 \paragraph{Parameters.}
 \begin{itemize}[leftmargin=*,itemsep=0.25em]
   \item $\mathsf{suite}$: cryptographic suite identifier (curve/group, hash, domain separators, transcript encoding, threshold-signing variant).
-  \item $\mathsf{policy}$: canonical verifier policy (e.g., $n,t$, minimum $\mathsf{DEL}$ attestations $k$, vendor/diversity constraints, RA roots, allowed measurements, freshness/replay-protection details).
+  \item $\mathsf{policy}$: canonical verifier policy (e.g., $n,t$, minimum $\mathsf{DEL}$ attestations $k$, vendor/diversity constraints, RA roots, allowed measurements, freshness details).
   \item $\mathsf{policy\_hash} := H(\mathsf{policy})$ (committed by $\mathsf{sid}$).
   \item $\mathsf{nonce}$: 128-bit coordinator nonce ensuring $\mathsf{sid}$ uniqueness.
-  \item $\mathsf{eid}$: enclave’s attested ephemeral DH/public key (per session), also used to bind the RA--TLS channel.
+  \item $\mathsf{eid}$: enclave’s attested ephemeral DH/public key (per session).
 \end{itemize}
 
-\paragraph{Attestation reportdata (aux).}
-We use a \emph{monotonic counter} $\mathsf{ctr}\in\{0,1,2\}$ carried in the reportdata; no phase tags or timestamps.
-All encodings are length-delimited and unambiguous.
-\begin{align*}
-  \text{RA}^{(\mathrm{JOIN})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}0,\ \mathsf{eid}) \\
-  \text{RA}^{(\mathrm{DKG})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}1,\ \mathsf{eid},\ pk) \\
-  \text{RA}^{(\mathrm{DEL})}\!:\ & \mathsf{aux} = (\mathsf{sid},\ \mathsf{ctr}{=}2,\ \mathsf{eid},\ pk,\ m^{\star},\ \sigma^{\star})
-\end{align*}
-Intuition: RA$^{(\mathrm{JOIN})}$ gates participation and binds $\mathsf{eid}$ to $\mathsf{sid}$; RA$^{(\mathsf{DKG})}$ binds the DKG result $pk$ to $\mathsf{sid}$ and $\mathsf{eid}$;
-RA$^{(\mathrm{DEL})}$ certifies deletion \emph{after} producing the unique output $(m^{\star},\sigma^{\star})$.
-
-\subsection*{Interfaces}
-\noindent
-$\textsf{RA.GenQuote}(\mathsf{aux}) \to \mathsf{RA}$\\
-$\textsf{RA.Verify}(\mathsf{RA};\ \textsf{allow\_meas},\ \textsf{roots}) \in \{0,1\}$\\
-$\textsf{Fresh}(\mathsf{RA},\sid) \in \{0,1\}$\\
-$\textsf{Latch}(\sid,m^{\star})$\\
-$\textsf{Del}()$
+% \subsection*{Interfaces}
+% \noindent
+% $\textsf{RA.GenQuote}(\mathsf{aux}) \to \mathsf{RA}$\\
+% $\textsf{RA.Verify}(\mathsf{RA};\ \textsf{allow\_meas},\ \textsf{roots}) \in \{0,1\}$\\
+% $\textsf{Fresh}(\mathsf{RA},\sid) \in \{0,1\}$\\
+% $\textsf{Latch}(\sid,m^{\star})$\\
+% $\textsf{Del}()$
 
 \subsection{Setup and DKG}
 \emph{Algorithm~\ref{alg:setup} performs policy-based roster selection, attested JOIN with peer vetting, runs the in\mbox{-}enclave threshold DKG coordinated by $C$, and binds the group key via RA$^{(\mathrm{DKG})}$.}
@@ -212,9 +212,9 @@ $\textsf{Del}()$
 \label{alg:setup}
 \begin{small}
 \begin{algorithmic}[1]
-\State $C$ selects a roster $R$ of enclaves satisfying $\mathsf{policy}$ (diversity, allowlisted measurements, RA roots) and sends $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ to all $E_i\in R$.
+\State $C$ selects a roster $R$ of enclaves satisfying $\mathsf{policy}$ and sends $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ to all $E_i\in R$.
 \For{each enclave $E_i\in R$}
-  \State Measure code $\mathsf{meas}$; generate ephemeral $\mathsf{eid}_i$; establish RA--TLS channel bound to $\mathsf{eid}_i$.
+  \State Measure code $\mathsf{meas}$; generate $\mathsf{eid}_i$; establish RA--TLS channel bound to $\mathsf{eid}_i$.
   \State $\mathsf{RA}^{(\mathrm{JOIN})}_i \gets \textsf{RA.GenQuote}\big((\mathsf{sid},\mathsf{ctr}{=}0,\mathsf{eid}_i)\big)$; send to $C$.
 \EndFor
 \State $C$ distributes $\{\mathsf{RA}^{(\mathrm{JOIN})}_j\}_{j\in R}$ to all $E_i\in R$.
@@ -255,6 +255,12 @@ $\textsf{Del}()$
 \subsection{Certified deletion and publication}
 \emph{Algorithm~\ref{alg:delete-publish} has $C$ request deletion attestations (including $\sigma^{\star}$) and enclaves attest deletion; $C$ then publishes the attested one-shot certificate $\mathsf{AOSC}_\sid$.}
 
+\[
+\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ \mathsf{nonce},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'}\big),
+\]
+where $S'$ is an index set with $|S'|\ge k$ satisfying the policy’s diversity constraints, and each
+$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
+
 \begin{algorithm}[H]
 \caption{\prot{}: \emph{DeleteAndPublish}}
 \label{alg:delete-publish}
@@ -277,13 +283,6 @@ $\textsf{Del}()$
 \end{small}
 \end{algorithm}
 
-\paragraph{Output artifact (published by $C$).}
-We define the \emph{attested one-shot certificate} for session $\sid$ as
-\[
-\mathsf{AOSC}_\sid := \big(\sid,\ \mathsf{suite},\ \mathsf{policy\_hash},\ \mathsf{nonce},\ pk,\ m^{\star},\ \sigma^{\star},\ \{(\mathsf{eid}_i,\ \mathsf{RA}^{(\mathrm{DEL})}_i)\}_{i\in S'}\big),
-\]
-where $S'$ is an index set with $|S'|\ge k$ satisfying the policy’s diversity constraints, and each
-$\mathsf{RA}^{(\mathrm{DEL})}_i$ has $\mathsf{aux}=(\sid,\mathsf{ctr}{=}2,\mathsf{eid}_i,pk,m^{\star},\sigma^{\star})$.
 \FloatBarrier
 
 \subsection{VerifyAOSC}
@@ -342,8 +341,8 @@ If attestations are independent across vendors/geographies/operators, the minimu
 \subsection{QuanTEEum money}
 Following the OSS-based quantum money with \emph{classical} communication paradigm ~\cite{shmueli2025one}, a coin is a chain of one-shot signatures over successive recipients’ serials/keys: the mint signs Alice’s serial; on transfer, Alice one-shot signs Bob’s, and so on, so the previous signing capability self-destructs after each hop. \prot{} instantiates this with TEEs: each minting/transfer runs a fresh session to produce $(pk,\sigma^{\star},\mathsf{AOSC}_\sid)$ where $m^{\star}$ encodes the coin serial (and, if desired, the next recipient), and RA$^{(\mathrm{DEL})}$ certifies in-enclave key erasure. The “one-shot” effect we rely on is precisely that the signing key can be used only once (collapses thereafter).
 
-\subsection{QuanTEEum ceremony-free CRS (Groth16)}
-We specialize \prot{} to a \emph{distributed certified-deletion} workflow—no DKG, no signing—since a ceremony’s goal is only to ensure toxic waste is unrecoverable. For a circuit with identifier $\mathsf{cid}=H(\text{QAP})$, enclaves jointly compute the Groth16 CRS inside TEEs (deriving any trapdoor material ephemerally), publish the CRS, then zeroize and attest deletion. Concretely, we reuse JOIN (policy/roster, RA–bound channels), compute the CRS in-enclave, and have each enclave emit a deletion quote binding $(\sid,\mathsf{cid},H(\mathsf{CRS}))$. Verifiers accept a CRS iff at least $k$ deletion attestations validate and are fresh. This is not a plain-model proof of “no toxic waste,” but yields an auditable, honest-minority and heterogeneous alternative to single-operator ceremonies for Groth16.
+% \subsection{QuanTEEum ceremony-free CRS (Groth16)}
+% We specialize \prot{} to a \emph{distributed certified-deletion} workflow—no DKG, no signing—since a ceremony’s goal is only to ensure toxic waste is unrecoverable. For a circuit with identifier $\mathsf{cid}=H(\text{QAP})$, enclaves jointly compute the Groth16 CRS inside TEEs (deriving any trapdoor material ephemerally), publish the CRS, then zeroize and attest deletion. Concretely, we reuse JOIN (policy/roster, RA–bound channels), compute the CRS in-enclave, and have each enclave emit a deletion quote binding $(\sid,\mathsf{cid},H(\mathsf{CRS}))$. Verifiers accept a CRS iff at least $k$ deletion attestations validate and are fresh. This is not a plain-model proof of “no toxic waste,” but yields an auditable, honest-minority and heterogeneous alternative to single-operator ceremonies for Groth16.
 
 \section{Discussion and Future Work}\label{sec:discussion}
 
@@ -351,19 +350,20 @@ We specialize \prot{} to a \emph{distributed certified-deletion} workflow—no D
 It maximizes the exact-one semantics and simplifies acceptance (\emph{all} attest). Generalizing to $t<n$ is straightforward mechanically but shifts the trust statement to “among the $k\!\ge\!t$ attesters, at least one honest enclave deleted.”
 
 \paragraph{Cryptoeconomic attestations.}
-Augment RA with bonded claims: each operator escrows collateral (and potentially zk-collateral) and signs a deletion statement $(\sid,m^{\star},\sigma^{\star})$ under a registered key; slashing conditions penalize equivocation or reuse. This yields weaker, but composable, guarantees and can be \emph{combined} with RA in hybrid QuanTEEum instantiations for stronger additivity.
+Augment RA with bonded claims: each operator escrows collateral (and potentially zk-collateral) and signs a deletion statement under a registered key; slashing conditions penalize equivocation or reuse. 
+% This yields weaker, but composable, guarantees and can be \emph{combined} with RA in hybrid QuanTEEum instantiations for stronger additivity.
 
 \paragraph{Upgrade to quantum OSS.}
 Once practical, it should be possible to swap the attestation mechanism for a quantum-certified deletion proof with the same acceptance predicate. Because \prot{} already binds $(\mathsf{sid},m^{\star},\sigma^{\star},pk)$ into attestations, the application layer remains unchanged.
 
-\paragraph{Repairable threshold schemes (availability vs.\ unclonability).}
-Operationally, a single enclave failure can strand funds if $t\!=\!n$. One option is to admit \emph{repairable/refreshable} threshold techniques pre\mbox{-}Commit (e.g., share refresh or repair across a larger roster) to tolerate crashes. However, after Commit the repair path \emph{must} be disabled to preserve one\mbox{-}shot semantics. This exposes a trade-off: higher availability vs.\ a larger attack surface. A practical mitigation is to increase $k$ (number of RA$^{(\mathrm{DEL})}$) and enforce stronger diversity when repair is enabled.
+% \paragraph{Repairable threshold schemes (availability vs.\ unclonability).}
+% Operationally, a single enclave failure can strand funds if $t\!=\!n$. One option is to admit \emph{repairable/refreshable} threshold techniques pre\mbox{-}Commit (e.g., share refresh or repair across a larger roster) to tolerate crashes. However, after Commit the repair path \emph{must} be disabled to preserve one\mbox{-}shot semantics. This exposes a trade-off: higher availability vs.\ a larger attack surface. A practical mitigation is to increase $k$ (number of RA$^{(\mathrm{DEL})}$) and enforce stronger diversity when repair is enabled.
 
 \paragraph{On-chain instantiation and incentives.}
 A blockchain can realize \textsf{Fresh} by recording JOIN/DEL quotes on-chain (keyed by $(\sid,\mathsf{eid},\mathsf{ctr})$), letting verifiers enforce uniqueness and $0\!\rightarrow\!1\!\rightarrow\!2$ order from state, while fees/rewards and slashing incentivize honest participation.
 
 \section{Conclusion}
-\prot{} offers a deployable path to one-shot capabilities by composing threshold signatures with certified deletion inside heterogeneous TEEs. The exact-one property becomes an honest-minority statement with additive security across independent attestations. The same interface smoothly upgrades to future quantum OSS, enabling \emph{QuanTEEum money} and ceremony-free Groth16 CRS today, while preserving a clean upgrade path as TEE attestations and quantum back ends strengthen.
+\prot{} offers a deployable path to one-shot capabilities by composing threshold signatures with certified deletion inside heterogeneous TEEs. The exact-one property becomes an honest-minority statement with additive security across independent attestations. The same interface smoothly upgrades to future quantum OSS, enabling \emph{QuanTEEum OSS} and \emph{QuanTEEum money}, while preserving a clean upgrade path as TEE attestations and quantum back ends strengthen.
 
 \bibliographystyle{splncs04}
 \bibliography{refs}
