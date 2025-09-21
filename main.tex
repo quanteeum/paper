@@ -1,10 +1,8 @@
 \documentclass[runningheads,orivec]{llncs} 
 \usepackage{amsmath,amssymb,mathtools}
 \usepackage{enumitem}
-\usepackage{hyperref}
 \usepackage{microtype}
 \usepackage[T1]{fontenc}
-\usepackage{booktabs}
 % Figures (message-flow)
 \usepackage{tikz}
 \usetikzlibrary{calc,arrows.meta,positioning}
@@ -18,10 +16,10 @@
 \usepackage{xcolor}
 \pagecolor[rgb]{0,0,0} %black
 \color[rgb]{0.8,0.8,0.8} %grey
+\usepackage{hyperref}
 
 \newcommand{\prot}{\textsf{QuanTEEum}}
 \newcommand{\sid}{\mathsf{sid}}
-\newcommand{\Att}{\mathsf{AttestDelete}}
 \newcommand{\RA}{\mathsf{RA}}
 \newcommand{\FROST}{\textsf{FROST}}
 \newcommand{\oss}{\textsf{OSS}}
@@ -40,7 +38,7 @@
 \begin{abstract}
 One-shot signatures (OSS) have emerged as a versatile abstraction underpinning various blockchain-facing applications. Existing OSS constructions rely on quantum hardware that will not be widely available soon. Naïve emulations using a single trusted execution environment (TEE) inherit brittle unclonability requirements and concentrate integrity risk in one enclave, while certified deletion on a single device is notoriously hard. 
 
-We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive}, as independent deletion attestations strictly raise the minimum cost-of-attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to QuanTEEum money and de-facto ceremony-free Groth16 CRS generation, and discuss liveness, freshness, and rollback subtleties. 
+We present \prot{}, an honest-minority distributed protocol that realizes certified deletion and OSS by running threshold signing entirely \emph{inside} heterogeneous TEEs. In \prot{}, $n$ enclaves run a threshold DKG, produce exactly one threshold signature on the designated message $m^{\star}$, and each emits a remote attestation (RA) binding an in-enclave deletion event; security is \emph{additive}, as independent deletion attestations strictly raise the minimum cost\mbox{-}of\mbox{-}attack, and TEE heterogeneity provides defense-in-depth against supply-chain risks. We formalize the \emph{exact-one} acceptance condition for one-shot signing in a remote attestation model under an abstract replay predicate \textsf{Fresh} (enforcing per-session counter monotonicity), and we \emph{discuss} pluggable attestation back ends—(a) conventional TEE RA, (b) cryptoeconomic attestations via escrowed collateral, and (c) future quantum instantiations—yielding a clean upgrade path. We sketch applications to QuanTEEum money and de-facto ceremony-free Groth16 CRS generation, and discuss liveness, freshness, and rollback subtleties. 
 \end{abstract}
 
 \section{Introduction}
@@ -125,7 +123,7 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
 
   % LEFT-MARGIN ANNOTATIONS (white boxes) to avoid any overlap with arrows
   \node[ann] at (-0.9,-1.0) {JOIN / RA$^{(\mathrm{JOIN})}$ (attested channels; $\mathsf{sid}$ fixed)};
-  \node[ann] at (-0.9,-2.8) {In-enclave DKG (Schnorr / FROST) and RA$^{(\mathrm{DKG})}$};
+  \node[ann] at (-0.9,-2.8) {In-enclave DKG and RA$^{(\mathrm{DKG})}$};
   \node[ann] at (-0.9,-5.0) {Commit $m^{\star}$ for $\mathsf{sid}$};
   \node[ann] at (-0.9,-6.2) {Threshold sign};
   \node[ann] at (-0.9,-8.2) {Delete \& RA$^{(\mathrm{DEL})}$ (post-output)};
@@ -155,7 +153,7 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
   \draw[msg] ($(E1)+(0,-8.1)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DEL})}(\mathsf{sid},\mathsf{ctr}{=}2,\mathsf{eid}_1,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.1)$);
   \draw[msg] ($(En)+(0,-8.4)$) -- node[above,sloped,near start]{$\RA^{(\mathrm{DEL})}(\mathsf{sid},\mathsf{ctr}{=}2,\mathsf{eid}_n,pk,m^{\star},\sigma^{\star})$} ($(C)+(0,-8.4)$);
 \end{tikzpicture}
-\caption{QuanTEEum message flow: RA$^{(\mathrm{JOIN})}$, RA$^{(\mathrm{DKG})}$ (bind $pk$), Commit $m^{\star}$, Sign, RA$^{(\mathrm{DEL})}$ (delete sk).}
+\caption{QuanTEEum message flow: RA$^{(\mathrm{JOIN})}$, RA$^{(\mathrm{DKG})}$ (bind $pk$), Commit $m^{\star}$, Sign, RA$^{(\mathrm{DEL})}$ (deletion).}
 \label{fig:flow}
 \end{figure}
 
