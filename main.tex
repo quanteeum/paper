@@ -141,7 +141,7 @@ The network is asynchronous with eventual delivery; the adversary may delay, dro
 
   % 3) Commit (freeze message for this sid)
   \draw[msg] ($(C)+(0,-4.8)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(E1)+(0,-4.8)$);
-  \draw[msg] ($(C)+(0,-5.1)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(En)+(0.2,-5.1)$);
+  \draw[msg] ($(C)+(0,-5.1)$) -- node[above,sloped]{broadcast $(m^{\star},\mathsf{sid})$} ($(En)+(0,-5.1)$);
 
   % 4) Sign (partials to aggregate)
   \draw[msg] ($(E1)+(0,-5.9)$) -- node[above,sloped,near start]{$\sigma_1$} ($(C)+(0,-5.9)$);
@@ -194,45 +194,13 @@ All encodings are length-delimited and unambiguous.
 Intuition: RA$^{(\mathrm{JOIN})}$ gates participation and binds $\mathsf{eid}$ to $\mathsf{sid}$; RA$^{(\mathsf{DKG})}$ binds the DKG result $pk$ to $\mathsf{sid}$ and $\mathsf{eid}$;
 RA$^{(\mathrm{DEL})}$ certifies deletion \emph{after} producing the unique output $(m^{\star},\sigma^{\star})$.
 
-\paragraph{Freshness and anti-replay.}
-We rely on an abstract predicate $\textsf{Fresh}(\mathsf{RA},\mathsf{sid})$ that captures replay protection via either enclave-backed monotonic storage
-or an external anchor (e.g., blockchain/notary). For each fixed $(\mathsf{sid},\mathsf{eid})$ the verifier accepts at most one quote per counter value and requires
-strict monotonicity: any accepted $\mathsf{ctr}{=}2$ must be \emph{fresh} relative to any prior accepted $\mathsf{ctr}{\in}\{0,1\}$; duplicates or non-increasing counters are rejected.
-
-\paragraph{Policy checks:}
-\begin{description}
-\item[\textbf{JOIN:}] $C$ sends $(\mathsf{suite},\mathsf{policy},\mathsf{nonce},\mathsf{sid})$ to the selected roster. Each enclave locally admits $\mathsf{policy}$ (e.g., allowlist or operator-signed), then emits RA$^{(\mathrm{JOIN})}$.
-  $C$ proceeds only with enclaves whose RA$^{(\mathrm{JOIN})}$ verifies and whose $\mathsf{sid}$ matches.
-  \item[\textbf{DKG:}] Enclaves run DKG over RA-bound channels; after DKG each emits RA$^{(\mathsf{DKG})}$ with $(\mathsf{sid},\mathsf{ctr}{=}1,\mathsf{eid},pk)$.
-  $C$ ensures all RA$^{(\mathsf{DKG})}$ bind to the same $(\mathsf{sid},pk)$.
-  \item[\textbf{Verification:}] An external verifier recomputes $\mathsf{policy\_hash}$ from its configured $\mathsf{policy}$,
-  checks that $\mathsf{sid}$ commits to it, and accepts iff:
-  \begin{enumerate}
-    \item[(a)] $\mathsf{Verify}(pk,m^{\star},\sigma^{\star})=1$,
-    \item[(b)] there are at least $k$ valid RA$^{(\mathrm{DEL})}$ with distinct $\mathsf{eid}$ satisfying diversity constraints, and
-    \item[(c)] each such RA$^{(\mathrm{DEL})}$ is \emph{fresh}, i.e., $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})},\mathsf{sid}){=}1$ and reflects strict counter increase relative to any previously accepted quotes for $(\mathsf{sid},\mathsf{eid})$ (JOIN optional, DKG precedes DEL).
-  \end{enumerate}
-\end{description}
-
-\subsection*{Interfaces and notation}
-\begin{itemize}[leftmargin=*,itemsep=0.25em]
-  \item $\textsf{RA.GenQuote}(\mathsf{aux}) \rightarrow \mathsf{RA}$:
-  produce a vendor-signed attestation over the enclave measurement and the byte string $\mathsf{aux}$.
-
-  \item $\textsf{RA.Verify}(\mathsf{RA};\ \textsf{allow\_meas},\ \textsf{roots}) \in \{0,1\}$:
-  verify signature under trusted RA roots and check the code measurement against the allowlist.
-
-  \item $\textsf{Fresh}(\mathsf{RA},\mathsf{sid}) \in \{0,1\}$:
-  abstract replay-protection predicate that enforces at most one accepted quote per $(\mathsf{sid},\mathsf{eid},\mathsf{ctr})$
-  and strict counter monotonicity for $(\mathsf{sid},\mathsf{eid})$ across JOIN ($0$), DKG ($1$), and DEL ($2$).
-  Instantiations include enclave-backed monotonic counters or an external append-only anchor.
-
-  \item $\textsf{Latch}(\sid,m^{\star})$:
-  bind $m^{\star}$ for this session inside the enclave; subsequent signing attempts under the same $\sid$ abort.
-
-  \item $\textsf{Del}()$:
-  irrecoverably zeroize the in-enclave key material and nonces (invoked before RA$^{(\mathrm{DEL})}$).
-\end{itemize}
+\subsection*{Interfaces}
+\noindent
+$\textsf{RA.GenQuote}(\mathsf{aux}) \to \mathsf{RA}$\\
+$\textsf{RA.Verify}(\mathsf{RA};\ \textsf{allow\_meas},\ \textsf{roots}) \in \{0,1\}$\\
+$\textsf{Fresh}(\mathsf{RA},\sid) \in \{0,1\}$\\
+$\textsf{Latch}(\sid,m^{\star})$\\
+$\textsf{Del}()$
 
 \subsection{Setup and DKG}
 \emph{Algorithm~\ref{alg:setup} performs policy-based roster selection, attested JOIN with peer vetting, runs the in\mbox{-}enclave threshold DKG coordinated by $C$, and binds the group key via RA$^{(\mathrm{DKG})}$.}
@@ -354,9 +322,6 @@ With $t{=}n$ the protocol requires all enclaves to participate; a crashed or abo
 \paragraph{Additive security via heterogeneity.}
 If attestations are independent across vendors/geographies/operators, the minimum cost\mbox{-}of\mbox{-}attack is approximately the sum of the $k$ cheapest per\mbox{-}enclave compromise costs (this approximation assumes independence and no bulk\mbox{-}attack economies; otherwise treat it as a lower bound). We recommend explicit \emph{diversity constraints} in policy (e.g., “at least two vendors and three physical operators”).
 
-\paragraph{Freshness and anti-replay.}
-Verifiers enforce an abstract replay predicate $\textsf{Fresh}$ rather than trusted time. For each $(\sid,\mathsf{eid})$, accept at most one attestation per counter value $\mathsf{ctr}\!\in\!\{0,1,2\}$ (JOIN, DKG, DEL) and require strict monotonicity $0\!\rightarrow\!1\!\rightarrow\!2$. Concretely, for every RA$^{(\mathrm{DEL})}$ in the certificate, check $\textsf{Fresh}(\mathsf{RA}^{(\mathrm{DEL})},\sid){=}1$ and that its $\mathsf{aux}$ binds $(\sid,\mathsf{ctr}{=}2,\mathsf{eid},pk,m^{\star},\sigma^{\star})$. Instantiations of $\textsf{Fresh}$ include enclave-backed monotonic storage or an external append-only anchor; no trusted timestamps are assumed.
-
 \section{Applications}\label{sec:apps}
 
 \subsection{\prot{} One-shot signatures (OSS)}\label{sec:app-oss}
@@ -377,29 +342,17 @@ We specialize \prot{} to a \emph{distributed certified-deletion} workflow—no D
 \paragraph{Why $t\!=\!n$ first?}
 It maximizes the exact-one semantics and simplifies acceptance (\emph{all} attest). Generalizing to $t<n$ is straightforward mechanically but shifts the trust statement to “among the $k\!\ge\!t$ attesters, at least one honest enclave deleted.”
 
-\paragraph{Nonce discipline.}
-Nonce misuse is fatal in Schnorr\mbox{-}style signing. All nonce generation and aggregation must occur in\mbox{-}enclave; nonces are zeroized alongside shares and bound to $\sid$.
-
-\paragraph{Rollback channels.}
-Hardware monotonic counters are ideal but scarce; when unavailable, anchor \textsf{Fresh} in an append-only public log (e.g., consensus chain) and/or a replicated monotonicity oracle.
-
 \paragraph{Cryptoeconomic attestations.}
 Augment RA with bonded claims: each operator escrows collateral (and potentially zk-collateral) and signs a deletion statement $(\sid,m^{\star},\sigma^{\star})$ under a registered key; slashing conditions penalize equivocation or reuse. This yields weaker, but composable, guarantees and can be \emph{combined} with RA in hybrid QuanTEEum instantiations for stronger additivity.
 
-\paragraph{Heterogeneity policy.}
-Enforce at least two TEE vendors, distinct cloud providers, and distinct administrative domains. Acceptance SHOULD require a diversity predicate (e.g., vendor quorum).
-
 \paragraph{Upgrade to quantum OSS.}
 Once practical, it should be possible to swap the attestation mechanism for a quantum-certified deletion proof with the same acceptance predicate. Because \prot{} already binds $(\mathsf{sid},m^{\star},\sigma^{\star},pk)$ into attestations, the application layer remains unchanged.
-
-\paragraph{Supply-chain hardening and RA$^{(\mathrm{DEL})}$ practicality.}
-Real deployments benefit from reproducible builds, deterministic enclave measurements, and signed SBOMs to reduce supply-chain risk. Practically, strong single-device “certified deletion” remains challenging; our distributed design amortizes this by requiring $k$ independent RA$^{(\mathrm{DEL})}$ across heterogeneous TEEs. 
 
 \paragraph{Repairable threshold schemes (availability vs.\ unclonability).}
 Operationally, a single enclave failure can strand funds if $t\!=\!n$. One option is to admit \emph{repairable/refreshable} threshold techniques pre\mbox{-}Commit (e.g., share refresh or repair across a larger roster) to tolerate crashes. However, after Commit the repair path \emph{must} be disabled to preserve one\mbox{-}shot semantics. This exposes a trade-off: higher availability vs.\ a larger attack surface. A practical mitigation is to increase $k$ (number of RA$^{(\mathrm{DEL})}$) and enforce stronger diversity when repair is enabled.
 
 \paragraph{On-chain instantiation and incentives.}
-A blockchain (L1/L2) can instantiate \textsf{Fresh} and incentivize participation: enclaves (or $C$) post JOIN/DEL quotes as transactions keyed by $(\sid,\mathsf{eid},\mathsf{ctr})$, and verifiers query chain state to enforce uniqueness and $0\!\rightarrow\!1\!\rightarrow\!2$ monotonicity. Fees/rewards can be paid per accepted RA$^{(\mathrm{DEL})}$, and bonded operators can be \emph{slashed} on detectable equivocation. This is complementary to the cryptoeconomic attestation variant above and yields a fully offline-verifiable trail if desired.
+A blockchain can realize \textsf{Fresh} by recording JOIN/DEL quotes on-chain (keyed by $(\sid,\mathsf{eid},\mathsf{ctr})$), letting verifiers enforce uniqueness and $0\!\rightarrow\!1\!\rightarrow\!2$ order from state, while fees/rewards and slashing incentivize honest participation.
 
 \section{Conclusion}
 \prot{} offers a deployable path to one-shot capabilities by composing threshold signatures with certified deletion inside heterogeneous TEEs. The exact-one property becomes an honest-minority statement with additive security across independent attestations. The same interface smoothly upgrades to future quantum OSS, enabling \emph{QuanTEEum money} and ceremony-free Groth16 CRS today, while preserving a clean upgrade path as TEE attestations and quantum back ends strengthen.
