@@ -1,4 +1,4 @@
-# QuanTEEum Whitepaper
+# QuanTEEum paper
 
 > QuanTEEum: Quantum Cryptography via TEEs
 
@@ -22,14 +22,14 @@ latexmk -xelatex -interaction=nonstopmode -file-line-error main.tex
 
 ## Repository layout
 ```
-/quanteeum-whitepaper/
-├── paper/                 # LaTeX sources
+/paper/
+├── sources/               # LaTeX sources
 │   ├── main.tex
 │   ├── refs.bib
 │   ├── llncs.cls
 │   ├── splncs04.bst
 │   └── figures/
-├── paper.pdf              # built PDF at repo root (easy to share)
+├── paper.pdf              # built PDF at repo root 
 ├── .gitignore
 └── LICENSE
 ```
@@ -37,12 +37,12 @@ latexmk -xelatex -interaction=nonstopmode -file-line-error main.tex
 ## Cite
 Use the BibTeX below.
 ```bibtex
-@misc{quanteeum_whitepaper_2025,
+@misc{quanteeum_paper_2025,
   title        = {QuanTEEum: Quantum Cryptography via TEEs},
   author       = {Ahmed, Shoaib},
   year         = {2025},
-  howpublished = {\url{https://github.com/quanteeum/quanteeum-whitepaper}},
-  note         = {Whitepaper preprint}
+  howpublished = {\url{https://github.com/quanteeum/paper}},
+  note         = {paper preprint}
 }
 ```
 
